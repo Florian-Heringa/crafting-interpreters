@@ -1,8 +1,12 @@
 from .token import Token
 from .token_type import TokenType
 from .asts.expr import Expr, Binary, Unary, Literal, Grouping
-from .lox import Lox
 from .error import LoxParseError
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .lox import Lox
 
 class Parser:
     """

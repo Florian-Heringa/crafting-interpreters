@@ -1,9 +1,11 @@
 from .token import Token
 from .token_type import TokenType
-from .lox import Lox
 from .utils import Char, is_num, is_alnum, is_alpha, TOKEN_MAP, KEYWORDS
 
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .lox import Lox
 
 class Scanner:
 
@@ -21,7 +23,7 @@ class Scanner:
     def scanTokens(self) -> list[Token]:
         while not self.isAtEnd():
             self.start = self.current
-            self.scanToken()
+            self._scanToken()
 
         self.tokens.append(
             Token(
@@ -34,7 +36,7 @@ class Scanner:
 
         return self.tokens
 
-    def scanToken(self):
+    def _scanToken(self):
         c = self.advance()
         match c:
             # Simple single character tokens
@@ -58,7 +60,7 @@ class Scanner:
             case "\"": self.string()
             case val if is_num(val): self.number()
             case chr if is_alpha(chr): self.identifier()
-            case _: Lox.error(self.line, "Unexpected character...")
+            case _: Lox.error(Token(TokenType.ERR, "", None, self.line), "Unexpected character...")
 
     def identifier(self):
         # Consume tokens until you get to a non-alphanumeric
@@ -86,7 +88,7 @@ class Scanner:
                 self.line += 1
             self.advance()
             if self.isAtEnd(): 
-                Lox.error(self.line, "Unterminated String")
+                Lox.error(Token(TokenType.ERR, "", None, self.line), "Unterminated String")
                 return
         
         # Consume the terminating "

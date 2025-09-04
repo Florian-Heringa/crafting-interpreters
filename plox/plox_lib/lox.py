@@ -1,7 +1,12 @@
 from os import PathLike
 
 from .token import Token
-from . token_type import TokenType
+from .token_type import TokenType
+from .asts.expr import Expr
+from .asts.ast_printer import AstPrinter
+
+from .scanner import Scanner
+from .parser import Parser
 
 class Lox:
 
@@ -37,8 +42,15 @@ class Lox:
 
     def run(self, source: str):
         
-        for token in source.split():
-            print(token)
+        scanner: Scanner = Scanner(source)
+        tokens: list[Token] = scanner.scanTokens()
+        parser: Parser = Parser(tokens)
+        expression: Expr | None = parser.parse()
+
+        if self.hadError or expression is None: 
+            return
+
+        print(AstPrinter().print(expression))
 
     @staticmethod
     def error(token: Token, message: str):
