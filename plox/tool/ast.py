@@ -10,6 +10,7 @@ def generate_ast_file(base_name: str,
         "from typing import Any",
         "from abc import abstractmethod",
         "",
+        "from ..utils import LoxType",
         "from ..token import Token",
         "",
     ]
@@ -70,6 +71,6 @@ if __name__ == "__main__":
     generate_ast_file("Expr", [
         "Binary - left: Expr, operator: Token, right: Expr",
         "Grouping - expression: Expr",
-        "Literal - value: str | float | bool | None",
+        "Literal - value: LoxType",
         "Unary - operator: Token, right: Expr",
     ])

@@ -4,6 +4,7 @@ from pydantic.dataclasses import dataclass
 from typing import Any
 from abc import abstractmethod
 
+from ..utils import LoxType
 from ..token import Token
 
 class Visitor:
@@ -39,7 +40,7 @@ class Grouping(Expr):
 
 @dataclass
 class Literal(Expr):
-	value: str | float | bool | None
+	value: LoxType
 
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitLiteralExpr(self)
