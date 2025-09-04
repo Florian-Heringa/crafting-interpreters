@@ -1,5 +1,8 @@
 from os import PathLike
 
+from .token import Token
+from . token_type import TokenType
+
 class Lox:
 
     hadError = False
@@ -38,8 +41,11 @@ class Lox:
             print(token)
 
     @staticmethod
-    def error(line: int, message: str):
-        Lox.report(line, "", message)
+    def error(token: Token, message: str):
+        if token.token_type == TokenType.EOF:
+            Lox.report(token.line, " at end", message)
+        else:
+            Lox.report(token.line, f" at '{token.lexeme}'", message)
 
     @classmethod
     def report(cls, line: int, where: str, message: str):
