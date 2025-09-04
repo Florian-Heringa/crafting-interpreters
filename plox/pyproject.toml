@@ -1,0 +1,23 @@
+[project]
+name = "plox"
+version = "0.1.0"
+description = "An interpreter for the Lox language in Python"
+authors = [
+    {name = "Florian-Heringa",email = "florian_music@hotmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic (>=2.11.7,<3.0.0)",
+    "pytest (>=8.4.1,<9.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [
+    { include = "plox_lib" }
+]

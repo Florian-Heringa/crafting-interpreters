@@ -1,0 +1,148 @@
+from pathlib import Path
+
+def generate_ast_file(base_name: str,
+                       data: list[str]):
+    
+    lines = [
+        "from pydantic.dataclasses import dataclass",
+        "from typing import Any",
+        "from abc import abstractmethod",
+        "",
+        "from ..token import Token",
+        "",
+    ]
+
+    lines += _define_visitor(base_name, data)
+
+    lines += [
+        "@dataclass",
+        f"class {base_name}:",
+        "\t@abstractmethod",
+        "\tdef accept(self, visitor: Visitor) -> Any: ...",
+        "",
+    ]
+
+    for ast_data in data:
+        name, spec_string = map(lambda s: s.strip(), ast_data.split("-"))
+        lines += _generate_ast_class(base_name, name, spec_string)
+
+    (Path(__file__).resolve().parent.parent / f"plox_lib/asts/{base_name.lower()}.py").write_text("\n".join(lines))
+
+
+def _generate_ast_class(base_class: str, class_name: str, description: str) -> list[str]:
+    lines = [
+        "@dataclass",
+        f"class {class_name}({base_class}):",
+    ]
+
+    spec_list = description.split(",")
+    for item in spec_list:
+        field, rest = map(str.strip, item.split(":", 1))
+        lines.append(f"\t{field}: {rest}")
+    
+    lines += [
+        "",
+        "\tdef accept(self, visitor: Visitor) -> Any:",
+        f"\t\treturn visitor.visit{class_name}{base_class}(self)",
+    ]
+
+    return lines + [""]
+
+def _define_visitor(base_name: str, description) -> list[str]:
+    lines = ["class Visitor:"]
+
+    for item in description:
+        type_name, _ = map(str.strip, item.split("-", 1))
+        lines.append("\t@abstractmethod")
+        lines.append(f"\tdef visit{type_name}{base_name}(self, {base_name.lower()}: \"{type_name}\") -> Any: ...")
+    lines.append("")
+    return lines
+
+if __name__ == "__main__":
+    # Make sure the Expr trees exist and are up to date
+    generate_ast_file("Expr", [
+        "Binary - left: Expr, operator: Token, right: Expr",
+        "Grouping - expression: Expr",
+        "Literal - value: str | float",
+        "Unary - operator: Token, right: Expr",
+    ])
+
+########################################################### Not working as intended with type checking, though it does
+########################################################### generate working classes
+# def generate_asts(base_name: str, 
+#                   data: list[str], 
+#                   write_stubs: bool = False, 
+#                   stub_path: Path = Path(__file__).resolve().parent / "typings"
+#     ) -> tuple[type[BaseModel], dict[str, type[BaseModel]]]:
+#     """
+#     Factory function for creating Abstract Syntax Tree (AST) classes from a string specification.
+#     This function ensures that the classes are created using the same base class, otherwise conflicts occur
+#     with instance checking.
+
+#     base_name: str => name of the base class the tree inherits from
+#     data: str => data of the tree, formatted as '<class name> - <field: type, >'
+
+#     The function assumes that any types that are not known should refer to the base class specified
+#     by base_name
+#     """
+
+#     AstBase = create_model(base_name)
+
+#     asts = {}
+
+#     for ast_data in data:
+#         name, spec_string = map(lambda s: s.strip(), ast_data.split("-"))
+#         asts[name] = (_generate_ast(AstBase, name, spec_string))
+
+#         if write_stubs:
+#             (stub_path / f"{name}.pyi").write_text(_generate_stubs(name, spec_string))
+
+#     return AstBase, asts
+
+# def _generate_stubs(class_name: str, spec_string: str) -> str:
+#     lines = [
+#         "from pydantic import BaseModel",
+#         "from plox_lib import Token",
+#         "from typing import Any",
+#         "",
+#         f"class {class_name}(BaseModel):"
+#     ]
+
+#     spec_list = spec_string.split(",")
+#     for item in spec_list:
+#         field, rest = map(str.strip, item.split(":", 1))
+#         if rest not in globals():
+#             lines.append(f"\t{field}: \"{rest}\"")
+#         else:
+#             lines.append(f"\t{field}: {rest}")
+    
+#     return "\n".join(lines) + "\n"
+
+# def _generate_ast(base_ast: type[BaseModel], ast_name: str, spec_string: str) -> type[BaseModel]:
+#     """
+#     Helper function to build Asts from string representation
+#     base_ast: BaseModel => Pydantic model used for inheritance tracking
+#     ast_name: str => name of the class to generate
+#     spec_string: str => data of the tree, formatted as '<field: type, >'
+
+#     The function assumes that any types that are not known should refer to the base class specified
+#     by base_name
+#     """
+
+#     field_spec = {}
+    
+#     spec_list = spec_string.split(",")
+
+#     for field in spec_list:
+#         field = field.strip()
+#         if not field: continue
+
+#         if ":" not in field:
+#             raise ValueError(f"Invalid field spec: {field}")
+#         field_name, datatype = map(str.strip, field.split(":", 1))
+#         if datatype in globals() or datatype in locals():
+#             field_spec[field_name] = Annotated[eval(datatype), None]
+#         else:
+#             field_spec[field_name] = Annotated[base_ast, None]
+
+#     return create_model(ast_name, **field_spec, __base__=base_ast)

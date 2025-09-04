@@ -1,0 +1,51 @@
+from pydantic.dataclasses import dataclass
+from typing import Any
+from abc import abstractmethod
+
+from ..token import Token
+
+class Visitor:
+	@abstractmethod
+	def visitBinaryExpr(self, expr: "Binary") -> Any: ...
+	@abstractmethod
+	def visitGroupingExpr(self, expr: "Grouping") -> Any: ...
+	@abstractmethod
+	def visitLiteralExpr(self, expr: "Literal") -> Any: ...
+	@abstractmethod
+	def visitUnaryExpr(self, expr: "Unary") -> Any: ...
+
+@dataclass
+class Expr:
+	@abstractmethod
+	def accept(self, visitor: Visitor) -> Any: ...
+
+@dataclass
+class Binary(Expr):
+	left: Expr
+	operator: Token
+	right: Expr
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitBinaryExpr(self)
+
+@dataclass
+class Grouping(Expr):
+	expression: Expr
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitGroupingExpr(self)
+
+@dataclass
+class Literal(Expr):
+	value: str | float
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitLiteralExpr(self)
+
+@dataclass
+class Unary(Expr):
+	operator: Token
+	right: Expr
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitUnaryExpr(self)
