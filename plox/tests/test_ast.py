@@ -8,8 +8,8 @@ from pathlib import Path
 def test_ast_file_generation():
 
     node = Binary(Literal(10), Token(TokenType.PLUS, "+", None, 1), Literal(5))
-    assert node.left.value == 10
-    assert node.right.value == 5
+    assert node.left.value == 10 # type: ignore
+    assert node.right.value == 5 # type: ignore
 
 def test_expr_print_01():
 
