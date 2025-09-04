@@ -1,6 +1,6 @@
 # Crafting Interpreters (pLox)
 
-A python implementation of Lox, the language used in Crafting Interpreters by ... to teach how interpreters and compilers work.
+A python implementation of Lox, the language used in Crafting Interpreters to teach how interpreters and compilers work.
 
 ## Running the interpreter
 

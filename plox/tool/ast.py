@@ -62,6 +62,11 @@ def _define_visitor(base_name: str, description) -> list[str]:
 
 if __name__ == "__main__":
     # Make sure the Expr trees exist and are up to date
+    # For the representation in python for Lox type there are technically no restraints
+    # since a python variable can hold any type of any value. However, for the purpose of
+    # intellisense and code checking, the Literal type has been restricted with pydantic to
+    # only allow the types that are actually used. This is slightly different from the book,
+    # where the java code uses the Object type to hold arbitrary data.
     generate_ast_file("Expr", [
         "Binary - left: Expr, operator: Token, right: Expr",
         "Grouping - expression: Expr",
