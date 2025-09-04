@@ -6,6 +6,7 @@ from .asts.expr import Expr
 from .asts.ast_printer import AstPrinter
 
 from .error import LoxRuntimeError
+from .utils import LoxType
 
 from .scanner import Scanner
 from .parser import Parser
@@ -26,7 +27,9 @@ class Lox:
         while True:
             try:
                 line = input("> ")
-                self.run(line)
+                result = self.run(line)
+                if result is not None:
+                    print(result)
             except EOFError:
                 print("\tExiting interactive session...")
                 break
@@ -46,8 +49,7 @@ class Lox:
         if self.hadRuntimeError:
             exit(70)
         
-
-    def run(self, source: str):
+    def run(self, source: str) -> LoxType:
         
         scanner: Scanner = Scanner(source)
         tokens: list[Token] = scanner.scanTokens()
@@ -57,7 +59,7 @@ class Lox:
         if self.hadError or expression is None: 
             return
 
-        self.interpreter.interpret(expression)
+        return self.interpreter.interpret(expression)
 
     @staticmethod
     def error(token: Token, message: str):

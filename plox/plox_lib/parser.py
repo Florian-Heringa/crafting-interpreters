@@ -5,8 +5,7 @@ from .error import LoxParseError
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from .lox import Lox
+from . import lox
 
 class Parser:
     """
@@ -148,7 +147,7 @@ class Parser:
         return self.peek().token_type == TokenType.EOF
     
     def error(self, token: Token, message: str) -> LoxParseError:
-        Lox.error(token, message)
+        lox.Lox.error(token, message)
         return LoxParseError()
     
     def synchronise(self):

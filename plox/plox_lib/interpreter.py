@@ -6,8 +6,7 @@ from .token_type import TokenType
 from .token import Token
 from .error import LoxRuntimeError
 
-if TYPE_CHECKING:
-    from .lox import Lox
+from . import lox
 
 class Interpreter(Visitor):
 
@@ -19,7 +18,7 @@ class Interpreter(Visitor):
             value: LoxType = self.evaluate(expr)
             return value
         except LoxRuntimeError as err:
-            Lox.runtimeError(err)
+            lox.Lox.runtimeError(err)
 
     ############################ Visitor pattern implementation
 
