@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from plox_lib.asts.expr import Binary, Grouping, Literal, Unary
 from .asts.expr import Visitor, Expr
 from .utils import LoxType
@@ -6,10 +6,22 @@ from .token_type import TokenType
 from .token import Token
 from .error import LoxRuntimeError
 
+if TYPE_CHECKING:
+    from .lox import Lox
+
 class Interpreter(Visitor):
 
     def __init__(self):
         ...
+
+    def interpret(self, expr: Expr) -> LoxType:
+        try:
+            value: LoxType = self.evaluate(expr)
+            return value
+        except LoxRuntimeError as err:
+            Lox.runtimeError(err)
+
+    ############################ Visitor pattern implementation
 
     def visitLiteralExpr(self, expr: Literal) -> LoxType:
         """Simple, evaluates to the value contained inside"""
@@ -74,6 +86,8 @@ class Interpreter(Visitor):
                     return str(left) + str(right)
                 raise LoxRuntimeError(expr.operator, "Operands must be two numbers or two strings")
     
+    ######################## Helper methods
+
     def evaluate(self, expr: Expr) -> LoxType:
         """Used in recursive step where the expression is looped back through the tree"""
         return expr.accept(self)
@@ -92,12 +106,23 @@ class Interpreter(Visitor):
         return True
     
     def isEqual(self, a: LoxType, b: LoxType):
+        """Test equality between two LoxType values"""
         if a == None and b == None:
             return True
         if a == None:
             return False
         return a == b
     
+    def stringify(self, value: LoxType) -> str:
+        """Helper method for converting LoxType values to strings"""
+        if value is None:
+            return "nil"
+        if isinstance(value, float):
+            return f"{value:g}"
+        return str(value)
+    
+    ########################## Error generation
+
     def checkNumberOperand(self, operator: Token, operand: LoxType):
         if isinstance(operand, float): 
             return True

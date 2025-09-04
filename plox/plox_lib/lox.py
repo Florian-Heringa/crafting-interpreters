@@ -5,15 +5,20 @@ from .token_type import TokenType
 from .asts.expr import Expr
 from .asts.ast_printer import AstPrinter
 
+from .error import LoxRuntimeError
+
 from .scanner import Scanner
 from .parser import Parser
+from .interpreter import Interpreter
 
 class Lox:
 
     hadError = False
+    hadRuntimeError = False
 
     def __init__(self):
         self.hadError = False
+        self.interpreter = Interpreter()
 
     def runPrompt(self):
         print("Running Prompt")
@@ -38,6 +43,8 @@ class Lox:
             self.run("".join(source.readlines()))
         if self.hadError:
             exit(65)
+        if self.hadRuntimeError:
+            exit(70)
         
 
     def run(self, source: str):
@@ -50,7 +57,7 @@ class Lox:
         if self.hadError or expression is None: 
             return
 
-        print(AstPrinter().print(expression))
+        self.interpreter.interpret(expression)
 
     @staticmethod
     def error(token: Token, message: str):
@@ -59,7 +66,16 @@ class Lox:
         else:
             Lox.report(token.line, f" at '{token.lexeme}'", message)
 
+    @staticmethod
+    def runtimeError(err: LoxRuntimeError):
+        Lox.reportRuntimeError(err.token.line, err.message)        
+
     @classmethod
     def report(cls, line: int, where: str, message: str):
         print(f"[line {line}] Error {where}: {message}")
         cls.hadError = True
+
+    @classmethod
+    def reportRuntimeError(cls, line: int, message: str):
+        print(f"{message}\n\t[Line {line}]")
+        cls.hadRuntimeError = True
