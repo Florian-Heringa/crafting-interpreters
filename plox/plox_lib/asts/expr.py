@@ -39,7 +39,7 @@ class Grouping(Expr):
 
 @dataclass
 class Literal(Expr):
-	value: str | float
+	value: str | float | bool | None
 
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitLiteralExpr(self)

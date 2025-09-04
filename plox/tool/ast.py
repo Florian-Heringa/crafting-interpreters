@@ -65,6 +65,6 @@ if __name__ == "__main__":
     generate_ast_file("Expr", [
         "Binary - left: Expr, operator: Token, right: Expr",
         "Grouping - expression: Expr",
-        "Literal - value: str | float",
+        "Literal - value: str | float | bool | None",
         "Unary - operator: Token, right: Expr",
     ])
