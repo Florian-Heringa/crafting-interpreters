@@ -1,22 +1,25 @@
-from typing import Any, TYPE_CHECKING
-from plox_lib.asts.expr import Binary, Grouping, Literal, Unary
-from .asts.expr import Visitor, Expr
+from typing import Any
+from .asts.expr import Expr, Binary, Grouping, Literal, Unary
+from .asts.stmt import Stmt
 from .utils import LoxType
 from .token_type import TokenType
 from .token import Token
 from .error import LoxRuntimeError
 
+# Circumvent circular import with lox.py
 from . import lox
+# For distinguishing the different Visitor implementations
+from .asts import expr, stmt
 
-class Interpreter(Visitor):
+class Interpreter(expr.Visitor, stmt.Visitor):
 
     def __init__(self):
         ...
 
-    def interpret(self, expr: Expr) -> LoxType:
+    def interpret(self, statements: list[Stmt]) -> LoxType:
         try:
-            value: LoxType = self.evaluate(expr)
-            return value
+            for stmt in statements:
+                self.execute(stmt)
         except LoxRuntimeError as err:
             lox.Lox.runtimeError(err)
 
@@ -84,12 +87,25 @@ class Interpreter(Visitor):
                 if isinstance(left, str) and isinstance(right, str):
                     return str(left) + str(right)
                 raise LoxRuntimeError(expr.operator, "Operands must be two numbers or two strings")
+            
+    def visitExpressionStmt(self, stmt: stmt.Expression) -> Any:
+        self.evaluate(stmt.expression)
+        return None
+    
+    def visitPrintStmt(self, stmt: stmt.Print) -> Any:
+        value: LoxType = self.evaluate(stmt.expression)
+        print(self.stringify(value))
+        return None
     
     ######################## Helper methods
 
     def evaluate(self, expr: Expr) -> LoxType:
         """Used in recursive step where the expression is looped back through the tree"""
         return expr.accept(self)
+    
+    def execute(self, stmt: Stmt):
+        """Use visitor pattern to execute statement"""
+        stmt.accept(self)
     
     def isTruthy(self, value: LoxType) -> bool:
         """

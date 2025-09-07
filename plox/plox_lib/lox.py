@@ -3,6 +3,7 @@ from os import PathLike
 from .token import Token
 from .token_type import TokenType
 from .asts.expr import Expr
+from .asts.stmt import Stmt
 from .asts.ast_printer import AstPrinter
 
 from .error import LoxRuntimeError
@@ -54,12 +55,12 @@ class Lox:
         scanner: Scanner = Scanner(source)
         tokens: list[Token] = scanner.scanTokens()
         parser: Parser = Parser(tokens)
-        expression: Expr | None = parser.parse()
+        statements: list[Stmt] = parser.parse()
 
-        if self.hadError or expression is None: 
+        if self.hadError: 
             return
 
-        return self.interpreter.interpret(expression)
+        return self.interpreter.interpret(statements)
 
     @staticmethod
     def error(token: Token, message: str):

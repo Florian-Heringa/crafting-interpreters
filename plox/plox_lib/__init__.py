@@ -7,4 +7,6 @@ from .asts.ast_printer import AstPrinter
 from .parser import Parser
 from .interpreter import Interpreter
 
+from . import asts
+
 __all__ = ["Lox", "Scanner", "Parser", "Token", "TokenType", "Expr", "AstPrinter", "Interpreter"]

@@ -1,5 +1,6 @@
 from .token import Token
 from .token_type import TokenType
+from .asts.stmt import Stmt, Print, Expression
 from .asts.expr import Expr, Binary, Unary, Literal, Grouping
 from .error import LoxParseError
 
@@ -9,7 +10,11 @@ from . import lox
 
 class Parser:
     """
-    Parser class for th Lox language. The following grammar is encoded:
+    Parser class for the Lox language. The following grammar is encoded:
+    program     => statement* EOF
+    statement   => exprStmt | printStmt
+    exprStmt    => expression ";"
+    printStmt   => "print" expression ";" 
     expression  => equality
     equality    => comparison ( ( "!=" | "==" ) comparison )*
     comparison  => term ( ( ">" | ">=" | "<" | "<=" ) term )*
@@ -23,17 +28,33 @@ class Parser:
         self.tokens: list[Token] = tokens
         self.current = 0
 
-    def parse(self) -> Expr | None:
-        try: 
-            return self.expression()
-        except LoxParseError:
-            return None
+    def parse(self) -> list[Stmt]:
+        statements: list[Stmt] = []
+        while not self.isAtEnd():
+            statements.append(self.statement())
+        
+        return statements
 
     ########### Grammar rules encoding
 
     def expression(self) -> Expr:
         """expression  => equality"""
         return self.equality()
+    
+    def statement(self) -> Stmt:
+        if self.match(TokenType.PRINT):
+            return self.printStatement()
+        return self.expressionStatement()
+    
+    def printStatement(self) -> Stmt:
+        value: Expr = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after value")
+        return Print(value)
+    
+    def expressionStatement(self) -> Stmt:
+        expr: Expr = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after expression")
+        return Expression(expr)
     
     def equality(self) -> Expr:
         """equality    => comparison ( ( "!=" | "==" ) comparison )*"""
