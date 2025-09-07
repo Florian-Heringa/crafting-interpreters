@@ -1,20 +1,21 @@
 from typing import Any
-from .asts.expr import Expr, Binary, Grouping, Literal, Unary
-from .asts.stmt import Stmt
+from .asts.expr import Expr, Binary, Grouping, Literal, Unary, Variable, Assign
+from .asts.stmt import Stmt, Expression, Print, Var, Block
 from .utils import LoxType
 from .token_type import TokenType
 from .token import Token
 from .error import LoxRuntimeError
+from .environment import Environment
 
 # Circumvent circular import with lox.py
 from . import lox
 # For distinguishing the different Visitor implementations
 from .asts import expr, stmt
 
-class Interpreter(expr.Visitor, stmt.Visitor):
+class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
 
     def __init__(self):
-        ...
+        self.env = Environment()
 
     def interpret(self, statements: list[Stmt]) -> LoxType:
         try:
@@ -87,15 +88,38 @@ class Interpreter(expr.Visitor, stmt.Visitor):
                 if isinstance(left, str) and isinstance(right, str):
                     return str(left) + str(right)
                 raise LoxRuntimeError(expr.operator, "Operands must be two numbers or two strings")
-            
-    def visitExpressionStmt(self, stmt: stmt.Expression) -> Any:
-        self.evaluate(stmt.expression)
-        return None
     
-    def visitPrintStmt(self, stmt: stmt.Print) -> Any:
+    def visitVariableExpr(self, expr: Variable) -> LoxType:
+        return self.env.get(expr.name)
+    
+    def visitAssignExpr(self, expr: Assign) -> LoxType:
+        value: LoxType = self.evaluate(expr.value)
+        self.env.assign(expr.name, value)
+        return value
+    
+    def visitExpressionStmt(self, stmt: Expression) -> None:
+        self.evaluate(stmt.expression)
+        return
+    
+    def visitPrintStmt(self, stmt: Print) -> None:
         value: LoxType = self.evaluate(stmt.expression)
         print(self.stringify(value))
-        return None
+        return
+    
+    def visitVarStmt(self, stmt: Var) -> None:
+        """
+        By default, if no init value is given, initialise the variable value to None (or 'nil' for Lox)
+        """
+        value: LoxType = None
+        if (stmt.initializer is not None):
+            value = self.evaluate(stmt.initializer)
+        
+        self.env.define(stmt.name.lexeme, value)
+        return
+    
+    def visitBlockStmt(self, stmt: Block) -> None:
+        self.executeBlock(stmt.statements, Environment(self.env))
+        return
     
     ######################## Helper methods
 
@@ -106,6 +130,18 @@ class Interpreter(expr.Visitor, stmt.Visitor):
     def execute(self, stmt: Stmt):
         """Use visitor pattern to execute statement"""
         stmt.accept(self)
+
+    def executeBlock(self, statements: list[Stmt], environment: Environment):
+        """Execute all statements in a block, using a new environment"""
+        previous: Environment = self.env
+        try:
+            self.env = environment
+
+            for statement in statements:
+                self.execute(statement)
+        finally:
+            self.env = previous
+
     
     def isTruthy(self, value: LoxType) -> bool:
         """

@@ -1,7 +1,7 @@
 from .token import Token
 from .token_type import TokenType
-from .asts.stmt import Stmt, Print, Expression, Var
-from .asts.expr import Expr, Binary, Unary, Literal, Grouping, Variable
+from .asts.stmt import Stmt, Print, Expression, Var, Block
+from .asts.expr import Expr, Binary, Unary, Literal, Grouping, Variable, Assign
 from .error import LoxParseError
 
 from . import lox
@@ -12,10 +12,12 @@ class Parser:
     program     => declaration* EOF
     declaration => varDecl | statement
     varDecl     => "var" IDENTIFIER ( "=" expression )? ";"
-    statement   => exprStmt | printStmt
+    statement   => exprStmt | printStmt | block
     exprStmt    => expression ";"
     printStmt   => "print" expression ";" 
-    expression  => equality
+    block       => "{" declaration* "}"
+    expression  => assignment
+    assignment  => IDENTIFIER "=" assignment | equality
     equality    => comparison ( ( "!=" | "==" ) comparison )*
     comparison  => term ( ( ">" | ">=" | "<" | "<=" ) term )*
     term        => factor ( ( "-" | "+" ) factor )*
@@ -42,8 +44,8 @@ class Parser:
     ########### Grammar rules encoding
 
     def expression(self) -> Expr:
-        """expression  => equality"""
-        return self.equality()
+        """expression  => assignment"""
+        return self.assignment()
     
     def declaration(self) -> Stmt:
         """declaration => varDecl | statement"""
@@ -62,9 +64,11 @@ class Parser:
         return Var(name, initializer)
 
     def statement(self) -> Stmt:
-        """statement   => exprStmt | printStmt"""
+        """statement   => exprStmt | printStmt | block"""
         if self.match(TokenType.PRINT):
             return self.printStatement()
+        if self.match(TokenType.LEFT_BRACE):
+            return Block(self.block())
         return self.expressionStatement()
     
     def printStatement(self) -> Stmt:
@@ -78,6 +82,35 @@ class Parser:
         expr: Expr = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after expression")
         return Expression(expr)
+    
+    def block(self) -> list[Stmt]:
+        """block       => "{" declaration* "}\""""
+        statements: list[Stmt] = []
+
+        while not self.check(TokenType.RIGHT_BRACE) and not self.isAtEnd():
+            statements.append(self.declaration())
+
+        self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
+
+        return statements
+    
+    def assignment(self) -> Expr:
+        """assignment  => IDENTIFIER "=" assignment | equality"""
+        expr: Expr = self.equality()
+
+        # if the found expression is followed by an "=", it *must* be an assignment
+        # So it should fall through to the 'primary' rule, yielding a Variable.
+        # Anything else results in an error
+        if self.match(TokenType.EQUAL):
+            equals: Token = self.previous()
+            value: Expr = self.assignment()
+
+            if (isinstance(expr, Variable)):
+                name: Token = expr.name
+                return Assign(name, value)
+            self.error(equals, "Invalid assignment target.")
+        
+        return expr
     
     def equality(self) -> Expr:
         """equality    => comparison ( ( "!=" | "==" ) comparison )*"""
