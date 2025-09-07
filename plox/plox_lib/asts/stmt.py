@@ -13,6 +13,8 @@ class Visitor:
 	def visitExpressionStmt(self, stmt: "Expression") -> Any: ...
 	@abstractmethod
 	def visitPrintStmt(self, stmt: "Print") -> Any: ...
+	@abstractmethod
+	def visitVarStmt(self, stmt: "Var") -> Any: ...
 
 @dataclass
 class Stmt:
@@ -32,3 +34,11 @@ class Print(Stmt):
 
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitPrintStmt(self)
+
+@dataclass
+class Var(Stmt):
+	name: Token
+	initializer: Expr | None
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitVarStmt(self)

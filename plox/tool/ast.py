@@ -82,10 +82,12 @@ if __name__ == "__main__":
         "Grouping - expression: Expr",
         "Literal  - value: LoxType",
         "Unary    - operator: Token, right: Expr",
+        "Variable - name: Token",
     ])
 
     generate_ast_file("Stmt", [
         "Expression - expression: Expr",
         "Print      - expression: Expr",
+        "Var        - name: Token, initializer: Expr | None",
     ],
     ["from .expr import Expr"])

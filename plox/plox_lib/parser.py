@@ -1,17 +1,17 @@
 from .token import Token
 from .token_type import TokenType
-from .asts.stmt import Stmt, Print, Expression
-from .asts.expr import Expr, Binary, Unary, Literal, Grouping
+from .asts.stmt import Stmt, Print, Expression, Var
+from .asts.expr import Expr, Binary, Unary, Literal, Grouping, Variable
 from .error import LoxParseError
-
-from typing import TYPE_CHECKING
 
 from . import lox
 
 class Parser:
     """
     Parser class for the Lox language. The following grammar is encoded:
-    program     => statement* EOF
+    program     => declaration* EOF
+    declaration => varDecl | statement
+    varDecl     => "var" IDENTIFIER ( "=" expression )? ";"
     statement   => exprStmt | printStmt
     exprStmt    => expression ";"
     printStmt   => "print" expression ";" 
@@ -21,7 +21,7 @@ class Parser:
     term        => factor ( ( "-" | "+" ) factor )*
     factor      => unary ( ( "/" | "*" ) unary )*
     unary       => ( "!" | "-" ) unary | primary
-    primary     => NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")"
+    primary     => NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER
     """
 
     def __init__(self, tokens: list[Token]):
@@ -29,9 +29,13 @@ class Parser:
         self.current = 0
 
     def parse(self) -> list[Stmt]:
+        """program     => declaration* EOF"""
         statements: list[Stmt] = []
         while not self.isAtEnd():
-            statements.append(self.statement())
+            try:
+                statements.append(self.declaration())
+            except LoxParseError as e:
+                self.synchronise()
         
         return statements
 
@@ -41,17 +45,36 @@ class Parser:
         """expression  => equality"""
         return self.equality()
     
+    def declaration(self) -> Stmt:
+        """declaration => varDecl | statement"""
+        if self.match(TokenType.VAR):
+            return self.varDeclaration()
+        return self.statement()
+
+        
+    def varDeclaration(self) -> Stmt:
+        """varDecl     => "var" IDENTIFIER ( "=" expression )? ";\""""
+        name: Token = self.consume(TokenType.IDENTIFIER, "Expect variable name")
+        initializer: Expr | None = None
+        if (self.match(TokenType.EQUAL)):
+            initializer = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration")
+        return Var(name, initializer)
+
     def statement(self) -> Stmt:
+        """statement   => exprStmt | printStmt"""
         if self.match(TokenType.PRINT):
             return self.printStatement()
         return self.expressionStatement()
     
     def printStatement(self) -> Stmt:
+        """printStmt   => "print" expression ";" """
         value: Expr = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after value")
         return Print(value)
     
     def expressionStatement(self) -> Stmt:
+        """exprStmt    => expression ";\""""
         expr: Expr = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after expression")
         return Expression(expr)
@@ -110,12 +133,14 @@ class Parser:
         return self.primary()
     
     def primary(self) -> Expr:
-        """primary     => NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")\""""
+        """primary     => NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")\" | IDENTIFIER"""
         if self.match(TokenType.FALSE): return Literal(False)
         if self.match(TokenType.TRUE): return Literal(True)
         if self.match(TokenType.NIL): return Literal(None)
         if self.match(TokenType.NUMBER, TokenType.STRING):
             return Literal(self.previous().literal)
+        if self.match(TokenType.IDENTIFIER):
+            return Variable(self.previous())
         if self.match(TokenType.LEFT_PAREN):
             expr: Expr = self.expression()
             self.consume(TokenType.RIGHT_PAREN, "Expect ')' after expression")
