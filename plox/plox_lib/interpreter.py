@@ -1,6 +1,6 @@
 from typing import Any
 from .asts.expr import Expr, Binary, Grouping, Literal, Unary, Variable, Assign
-from .asts.stmt import Stmt, Expression, Print, Var, Block, If
+from .asts.stmt import Stmt, Expression, Print, Var, Block, If, While
 from .utils import LoxType
 from .token_type import TokenType
 from .token import Token
@@ -141,7 +141,11 @@ class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
     def visitBlockStmt(self, stmt: Block) -> None:
         self.executeBlock(stmt.statements, Environment(self.env))
         return
-        
+    
+    def visitWhileStmt(self, stmt: While) -> None:
+        while self.isTruthy(self.evaluate(stmt.condition)):
+            self.execute(stmt.body)
+        return
     
     ######################## Helper methods
 
@@ -164,7 +168,6 @@ class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
         finally:
             self.env = previous
 
-    
     def isTruthy(self, value: LoxType) -> bool:
         """
         Check if the value is truthy. This is defined as: 

@@ -93,5 +93,6 @@ if __name__ == "__main__":
         "If         - condition: Expr, thenBranch: Stmt, elseBranch: Stmt | None",
         "Print      - expression: Expr",
         "Var        - name: Token, initializer: Expr | None",
+        "While      - condition: Expr, body: Stmt",
     ],
     ["from .expr import Expr"])

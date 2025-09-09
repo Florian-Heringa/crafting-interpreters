@@ -23,8 +23,8 @@ class Environment:
         It is an error if a variable is undefined at the moment a value is requested.
         Using a default value is quite meaningless since the language is dynamically typed.
         """
-        if value := self.values.get(name.lexeme):
-            return value
+        if name.lexeme in self.values:
+            return self.values.get(name.lexeme)
         # Go up in scope
         if self.enclosing is not None:
             return self.enclosing.get(name)

@@ -1,6 +1,6 @@
 from .token import Token
 from .token_type import TokenType
-from .asts.stmt import Stmt, Print, Expression, Var, Block, If
+from .asts.stmt import Stmt, Print, Expression, Var, Block, If, While
 from .asts.expr import Expr, Binary, Unary, Literal, Grouping, Variable, Assign, Logical
 from .error import LoxParseError
 
@@ -12,10 +12,11 @@ class Parser:
     program     => declaration* EOF
     declaration => varDecl | statement
     varDecl     => "var" IDENTIFIER ( "=" expression )? ";"
-    statement   => exprStmt | ifStmt | printStmt | block
+    statement   => exprStmt | ifStmt | printStmt | whileStmt | block
     exprStmt    => expression ";"
     ifStmt      => "if" "(" expression ")" statement ( "else" statement )?
     printStmt   => "print" expression ";" 
+    whileStmt   => "while" "(" expression ")" statement
     block       => "{" declaration* "}"
     expression  => assignment
     assignment  => IDENTIFIER "=" assignment | logic_or
@@ -66,13 +67,15 @@ class Parser:
         return Var(name, initializer)
 
     def statement(self) -> Stmt:
-        """statement   => exprStmt | ifStmt | printStmt | block"""
+        """statement   => exprStmt | ifStmt | printStmt | whileStmt | block"""
         if self.match(TokenType.IF):
             return self.ifStatement()
         if self.match(TokenType.PRINT):
             return self.printStatement()
         if self.match(TokenType.LEFT_BRACE):
             return Block(self.block())
+        if self.match(TokenType.WHILE):
+            return self.whileStatement()
         return self.expressionStatement()
     
     def printStatement(self) -> Stmt:
@@ -90,6 +93,15 @@ class Parser:
         
         return If(condition, thenBranch, self.statement() if self.match(TokenType.ELSE) else None)
     
+    def whileStatement(self) -> Stmt:
+        """whileStmt   => "while" "(" expression ")" statement"""
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")
+        condition: Expr = self.expression()
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after while condition.")
+        body: Stmt = self.statement()
+
+        return While(condition, body)
+
     def expressionStatement(self) -> Stmt:
         """exprStmt    => expression ";\""""
         expr: Expr = self.expression()

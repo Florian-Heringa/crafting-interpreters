@@ -21,6 +21,8 @@ class Visitor(ABC, Generic[T]):
 	def visitPrintStmt(self, stmt: "Print") -> T: ...
 	@abstractmethod
 	def visitVarStmt(self, stmt: "Var") -> T: ...
+	@abstractmethod
+	def visitWhileStmt(self, stmt: "While") -> T: ...
 
 @dataclass
 class Stmt:
@@ -64,3 +66,11 @@ class Var(Stmt):
 
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitVarStmt(self)
+
+@dataclass
+class While(Stmt):
+	condition: Expr
+	body: Stmt
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitWhileStmt(self)
