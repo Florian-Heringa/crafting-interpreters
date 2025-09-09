@@ -19,6 +19,8 @@ class Visitor(ABC, Generic[T]):
 	@abstractmethod
 	def visitLiteralExpr(self, expr: "Literal") -> T: ...
 	@abstractmethod
+	def visitLogicalExpr(self, expr: "Logical") -> T: ...
+	@abstractmethod
 	def visitUnaryExpr(self, expr: "Unary") -> T: ...
 	@abstractmethod
 	def visitVariableExpr(self, expr: "Variable") -> T: ...
@@ -58,6 +60,15 @@ class Literal(Expr):
 
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitLiteralExpr(self)
+
+@dataclass
+class Logical(Expr):
+	left: Expr
+	operator: Token
+	right: Expr
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitLogicalExpr(self)
 
 @dataclass
 class Unary(Expr):

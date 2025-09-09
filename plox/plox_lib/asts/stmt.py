@@ -16,6 +16,8 @@ class Visitor(ABC, Generic[T]):
 	@abstractmethod
 	def visitExpressionStmt(self, stmt: "Expression") -> T: ...
 	@abstractmethod
+	def visitIfStmt(self, stmt: "If") -> T: ...
+	@abstractmethod
 	def visitPrintStmt(self, stmt: "Print") -> T: ...
 	@abstractmethod
 	def visitVarStmt(self, stmt: "Var") -> T: ...
@@ -38,6 +40,15 @@ class Expression(Stmt):
 
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitExpressionStmt(self)
+
+@dataclass
+class If(Stmt):
+	condition: Expr
+	thenBranch: Stmt
+	elseBranch: Stmt | None
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitIfStmt(self)
 
 @dataclass
 class Print(Stmt):

@@ -1,6 +1,6 @@
 from typing import Any
 from .asts.expr import Expr, Binary, Grouping, Literal, Unary, Variable, Assign
-from .asts.stmt import Stmt, Expression, Print, Var, Block
+from .asts.stmt import Stmt, Expression, Print, Var, Block, If
 from .utils import LoxType
 from .token_type import TokenType
 from .token import Token
@@ -29,6 +29,19 @@ class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
     def visitLiteralExpr(self, expr: Literal) -> LoxType:
         """Simple, evaluates to the value contained inside"""
         return expr.value
+    
+    def visitLogicalExpr(self, expr: expr.Logical) -> LoxType:
+        """
+        Short circuiting conditional. 
+        a  or b => when a is  true, don't evaluate b return a, otherwise return b
+        a and b => when a is false, don't evaluate b return a, otherwise return b
+        """
+        left: LoxType = self.evaluate(expr.left)
+        if expr.operator.token_type == TokenType.OR:
+            return left if self.isTruthy(left) else self.evaluate(expr.right)
+        else:
+            return left if not self.isTruthy(left) else self.evaluate(expr.right)
+        
     
     def visitGroupingExpr(self, expr: Grouping) -> LoxType:
         """Slightly more complicated, holds an expression inside that must be evaluated"""
@@ -101,6 +114,14 @@ class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
         self.evaluate(stmt.expression)
         return
     
+    def visitIfStmt(self, stmt: If) -> None:
+        """Evaluate if statement according to the truthy rules of Lox"""
+        if self.isTruthy(self.evaluate(stmt.condition)):
+            self.execute(stmt.thenBranch)
+        elif stmt.elseBranch is not None:
+            self.execute(stmt.elseBranch)
+        return
+    
     def visitPrintStmt(self, stmt: Print) -> None:
         value: LoxType = self.evaluate(stmt.expression)
         print(self.stringify(value))
@@ -120,6 +141,7 @@ class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
     def visitBlockStmt(self, stmt: Block) -> None:
         self.executeBlock(stmt.statements, Environment(self.env))
         return
+        
     
     ######################## Helper methods
 

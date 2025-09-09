@@ -82,6 +82,7 @@ if __name__ == "__main__":
         "Binary   - left: Expr, operator: Token, right: Expr",
         "Grouping - expression: Expr",
         "Literal  - value: LoxType",
+        "Logical  - left: Expr, operator: Token, right: Expr",
         "Unary    - operator: Token, right: Expr",
         "Variable - name: Token",
     ])
@@ -89,6 +90,7 @@ if __name__ == "__main__":
     generate_ast_file("Stmt", [
         "Block      - statements: list[Stmt]",
         "Expression - expression: Expr",
+        "If         - condition: Expr, thenBranch: Stmt, elseBranch: Stmt | None",
         "Print      - expression: Expr",
         "Var        - name: Token, initializer: Expr | None",
     ],

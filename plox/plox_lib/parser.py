@@ -1,7 +1,7 @@
 from .token import Token
 from .token_type import TokenType
-from .asts.stmt import Stmt, Print, Expression, Var, Block
-from .asts.expr import Expr, Binary, Unary, Literal, Grouping, Variable, Assign
+from .asts.stmt import Stmt, Print, Expression, Var, Block, If
+from .asts.expr import Expr, Binary, Unary, Literal, Grouping, Variable, Assign, Logical
 from .error import LoxParseError
 
 from . import lox
@@ -12,12 +12,15 @@ class Parser:
     program     => declaration* EOF
     declaration => varDecl | statement
     varDecl     => "var" IDENTIFIER ( "=" expression )? ";"
-    statement   => exprStmt | printStmt | block
+    statement   => exprStmt | ifStmt | printStmt | block
     exprStmt    => expression ";"
+    ifStmt      => "if" "(" expression ")" statement ( "else" statement )?
     printStmt   => "print" expression ";" 
     block       => "{" declaration* "}"
     expression  => assignment
-    assignment  => IDENTIFIER "=" assignment | equality
+    assignment  => IDENTIFIER "=" assignment | logic_or
+    logic_or    => logic_and ("or" logic_and)*
+    logic_and   => equality ("and" equality)*
     equality    => comparison ( ( "!=" | "==" ) comparison )*
     comparison  => term ( ( ">" | ">=" | "<" | "<=" ) term )*
     term        => factor ( ( "-" | "+" ) factor )*
@@ -52,7 +55,6 @@ class Parser:
         if self.match(TokenType.VAR):
             return self.varDeclaration()
         return self.statement()
-
         
     def varDeclaration(self) -> Stmt:
         """varDecl     => "var" IDENTIFIER ( "=" expression )? ";\""""
@@ -64,7 +66,9 @@ class Parser:
         return Var(name, initializer)
 
     def statement(self) -> Stmt:
-        """statement   => exprStmt | printStmt | block"""
+        """statement   => exprStmt | ifStmt | printStmt | block"""
+        if self.match(TokenType.IF):
+            return self.ifStatement()
         if self.match(TokenType.PRINT):
             return self.printStatement()
         if self.match(TokenType.LEFT_BRACE):
@@ -76,6 +80,15 @@ class Parser:
         value: Expr = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after value")
         return Print(value)
+    
+    def ifStatement(self) -> Stmt:
+        """ifStmt      => "if" "(" expression ")" statement ( "else" statement )?"""
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.")
+        condition: Expr = self.expression()
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition")
+        thenBranch: Stmt = self.statement()
+        
+        return If(condition, thenBranch, self.statement() if self.match(TokenType.ELSE) else None)
     
     def expressionStatement(self) -> Stmt:
         """exprStmt    => expression ";\""""
@@ -95,8 +108,8 @@ class Parser:
         return statements
     
     def assignment(self) -> Expr:
-        """assignment  => IDENTIFIER "=" assignment | equality"""
-        expr: Expr = self.equality()
+        """assignment  => IDENTIFIER "=" assignment | logic_or"""
+        expr: Expr = self.logic_or()
 
         # if the found expression is followed by an "=", it *must* be an assignment
         # So it should fall through to the 'primary' rule, yielding a Variable.
@@ -110,6 +123,26 @@ class Parser:
                 return Assign(name, value)
             self.error(equals, "Invalid assignment target.")
         
+        return expr
+    
+    def logic_or(self) -> Expr:
+        expr: Expr = self.logic_and()
+
+        if self.match(TokenType.OR):
+            operator: Token = self.previous()
+            right: Expr = self.logic_and()
+            return Logical(expr, operator, right)
+
+        return expr
+
+    def logic_and(self)-> Expr:
+        expr: Expr = self.equality()
+
+        if self.match(TokenType.AND):
+            operator: Token = self.previous()
+            right: Expr = self.equality()
+            return Logical(expr, operator, right)
+
         return expr
     
     def equality(self) -> Expr:
