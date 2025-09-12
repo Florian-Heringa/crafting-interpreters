@@ -5,13 +5,6 @@ import re
 from .token_type import TokenType
 
 Char = Annotated[str, constr(min_length=1, max_length=1)]
-LoxType = float | str | bool | None
-
-# class LoxType:
-#     def __init__(self, value: LT):
-#         if not isinstance(value, (float, str, bool)) and value is not None:
-#             raise TypeError(f"Invalid type: {type(value)}")
-#         self.value: LT = value
 
 def is_alpha(c: Char) -> bool:
     return bool(re.match(r"[a-zA-Z_]", c))

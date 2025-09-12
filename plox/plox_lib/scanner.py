@@ -2,7 +2,7 @@ from .token import Token
 from .token_type import TokenType
 from .utils import Char, is_num, is_alnum, is_alpha, TOKEN_MAP, KEYWORDS
 
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from . import lox
 

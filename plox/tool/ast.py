@@ -20,7 +20,6 @@ def generate_ast_file(base_name: str,
         "from typing import Any, TypeVar, Generic",
         "from abc import abstractmethod, ABC",
         "",
-        "from ..utils import LoxType",
         "from ..token import Token",
     ] + additional_imports + [""]
 
@@ -80,8 +79,9 @@ if __name__ == "__main__":
     generate_ast_file("Expr", [
         "Assign   - name: Token, value: Expr",
         "Binary   - left: Expr, operator: Token, right: Expr",
+        "Call     - callee: Expr, paren: Token, arguments: list[Expr]", 
         "Grouping - expression: Expr",
-        "Literal  - value: LoxType",
+        "Literal  - value: object",
         "Logical  - left: Expr, operator: Token, right: Expr",
         "Unary    - operator: Token, right: Expr",
         "Variable - name: Token",
@@ -90,6 +90,7 @@ if __name__ == "__main__":
     generate_ast_file("Stmt", [
         "Block      - statements: list[Stmt]",
         "Expression - expression: Expr",
+        "Function    - name: Token, params: list[Token], body: list[Stmt]",
         "If         - condition: Expr, thenBranch: Stmt, elseBranch: Stmt | None",
         "Print      - expression: Expr",
         "Var        - name: Token, initializer: Expr | None",

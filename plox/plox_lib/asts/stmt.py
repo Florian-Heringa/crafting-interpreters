@@ -4,7 +4,6 @@ from pydantic.dataclasses import dataclass
 from typing import Any, TypeVar, Generic
 from abc import abstractmethod, ABC
 
-from ..utils import LoxType
 from ..token import Token
 from .expr import Expr
 
@@ -15,6 +14,8 @@ class Visitor(ABC, Generic[T]):
 	def visitBlockStmt(self, stmt: "Block") -> T: ...
 	@abstractmethod
 	def visitExpressionStmt(self, stmt: "Expression") -> T: ...
+	@abstractmethod
+	def visitFunctionStmt(self, stmt: "Function") -> T: ...
 	@abstractmethod
 	def visitIfStmt(self, stmt: "If") -> T: ...
 	@abstractmethod
@@ -42,6 +43,15 @@ class Expression(Stmt):
 
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitExpressionStmt(self)
+
+@dataclass
+class Function(Stmt):
+	name: Token
+	params: list[Token]
+	body: list[Stmt]
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitFunctionStmt(self)
 
 @dataclass
 class If(Stmt):

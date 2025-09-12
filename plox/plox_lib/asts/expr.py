@@ -4,7 +4,6 @@ from pydantic.dataclasses import dataclass
 from typing import Any, TypeVar, Generic
 from abc import abstractmethod, ABC
 
-from ..utils import LoxType
 from ..token import Token
 
 T = TypeVar("T")
@@ -14,6 +13,8 @@ class Visitor(ABC, Generic[T]):
 	def visitAssignExpr(self, expr: "Assign") -> T: ...
 	@abstractmethod
 	def visitBinaryExpr(self, expr: "Binary") -> T: ...
+	@abstractmethod
+	def visitCallExpr(self, expr: "Call") -> T: ...
 	@abstractmethod
 	def visitGroupingExpr(self, expr: "Grouping") -> T: ...
 	@abstractmethod
@@ -48,6 +49,15 @@ class Binary(Expr):
 		return visitor.visitBinaryExpr(self)
 
 @dataclass
+class Call(Expr):
+	callee: Expr
+	paren: Token
+	arguments: list[Expr]
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitCallExpr(self)
+
+@dataclass
 class Grouping(Expr):
 	expression: Expr
 
@@ -56,7 +66,7 @@ class Grouping(Expr):
 
 @dataclass
 class Literal(Expr):
-	value: LoxType
+	value: object
 
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitLiteralExpr(self)

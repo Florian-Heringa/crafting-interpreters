@@ -2,12 +2,9 @@ from os import PathLike
 
 from .token import Token
 from .token_type import TokenType
-from .asts.expr import Expr
 from .asts.stmt import Stmt
-from .asts.ast_printer import AstPrinter
 
 from .error import LoxRuntimeError
-from .utils import LoxType
 
 from .scanner import Scanner
 from .parser import Parser
@@ -50,7 +47,7 @@ class Lox:
         if self.hadRuntimeError:
             exit(70)
         
-    def run(self, source: str) -> LoxType:
+    def run(self, source: str) -> object:
         
         scanner: Scanner = Scanner(source)
         tokens: list[Token] = scanner.scanTokens()

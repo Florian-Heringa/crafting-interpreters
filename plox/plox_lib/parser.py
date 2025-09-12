@@ -1,8 +1,9 @@
 from .token import Token
 from .token_type import TokenType
-from .asts.stmt import Stmt, Print, Expression, Var, Block, If, While
-from .asts.expr import Expr, Binary, Unary, Literal, Grouping, Variable, Assign, Logical
+from .asts.stmt import Stmt, Print, Expression, Var, Block, If, While, Function
+from .asts.expr import Expr, Binary, Unary, Literal, Grouping, Variable, Assign, Logical, Call
 from .error import LoxParseError
+from .params import Params
 
 from . import lox
 
@@ -10,7 +11,10 @@ class Parser:
     """
     Parser class for the Lox language. The following grammar is encoded:
     program     => declaration* EOF
-    declaration => varDecl | statement
+    declaration => funDecl | varDecl | statement
+    funDecl     => "fun" function
+    function    => IDENTIFIER "(" parameters? ")" block
+    parameters  => IDENTIFIER ( "," IDENTIFIER )*
     varDecl     => "var" IDENTIFIER ( "=" expression )? ";"
     statement   => exprStmt | forStmt | ifStmt | printStmt | whileStmt | block
     exprStmt    => expression ";"
@@ -27,7 +31,9 @@ class Parser:
     comparison  => term ( ( ">" | ">=" | "<" | "<=" ) term )*
     term        => factor ( ( "-" | "+" ) factor )*
     factor      => unary ( ( "/" | "*" ) unary )*
-    unary       => ( "!" | "-" ) unary | primary
+    unary       => ( "!" | "-" ) unary | call
+    call        => primary ( "(" arguments? ")" )*
+    arguments   => expression ( "," expression )*
     primary     => NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER
     """
 
@@ -54,9 +60,28 @@ class Parser:
     
     def declaration(self) -> Stmt:
         """declaration => varDecl | statement"""
+        if self.match(TokenType.FUN):
+            return self.function("function")
         if self.match(TokenType.VAR):
             return self.varDeclaration()
         return self.statement()
+    
+    def function(self, kind: str) -> Stmt:
+        name: Token = self.consume(TokenType.IDENTIFIER, f"Expect {kind} name.")
+        self.consume(TokenType.LEFT_PAREN, f"Expect'(' after {kind} name.")
+        parameters: list[Token] = []
+
+        if not self.check(TokenType.RIGHT_PAREN):
+            while True:
+                if len(parameters) > Params.MAX_ARGUMENT_COUNT:
+                    self.error(self.peek(), f"Can't have more than {Params.MAX_ARGUMENT_COUNT} parameters.")
+                parameters.append(self.consume(TokenType.IDENTIFIER, "Expect parameter name."))
+                if not self.match(TokenType.COMMA):
+                    break
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
+        self.consume(TokenType.LEFT_BRACE, f"Expect '{{' before {kind} body.")
+        body: list[Stmt] = self.block()
+        return Function(name, parameters, body)
         
     def varDeclaration(self) -> Stmt:
         """varDecl     => "var" IDENTIFIER ( "=" expression )? ";\""""
@@ -256,8 +281,35 @@ class Parser:
             operator: Token = self.previous()
             right: Expr = self.unary()
             return Unary(operator, right)
-        return self.primary()
+        return self.call()
     
+    
+    def call(self) -> Expr:
+        expr: Expr = self.primary()
+
+        while True:
+            if self.match(TokenType.LEFT_PAREN):
+                expr = self.finishCall(expr)
+            else:
+                break
+
+        return expr        
+
+    def finishCall(self, callee: Expr) -> Expr:
+        arguments: list[Expr] = []
+
+        if not self.check(TokenType.RIGHT_PAREN):
+            while True:
+                if len(arguments) > Params.MAX_ARGUMENT_COUNT:
+                    self.error(self.peek(), f"Can't have more than {Params.MAX_ARGUMENT_COUNT} arguments.")
+                arguments.append(self.expression())
+                if not self.match(TokenType.COMMA):
+                    break
+
+        paren: Token = self.consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments")
+
+        return Call(callee, paren, arguments)
+
     def primary(self) -> Expr:
         """primary     => NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")\" | IDENTIFIER"""
         if self.match(TokenType.FALSE): return Literal(False)

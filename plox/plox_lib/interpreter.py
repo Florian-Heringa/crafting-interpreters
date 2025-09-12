@@ -1,23 +1,39 @@
-from typing import Any
-from .asts.expr import Expr, Binary, Grouping, Literal, Unary, Variable, Assign
-from .asts.stmt import Stmt, Expression, Print, Var, Block, If, While
-from .utils import LoxType
+from .asts.expr import Expr, Binary, Grouping, Literal, Unary, Variable, Assign, Call
+from .asts.stmt import Stmt, Expression, Print, Var, Block, If, While, Function
 from .token_type import TokenType
 from .token import Token
 from .error import LoxRuntimeError
 from .environment import Environment
+from .lox_callable import LoxCallable
+from .lox_function import LoxFunction
 
 # Circumvent circular import with lox.py
 from . import lox
 # For distinguishing the different Visitor implementations
 from .asts import expr, stmt
 
-class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
+import time
+
+class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
+
+    globals: Environment = Environment()
 
     def __init__(self):
-        self.env = Environment()
+        self.env: Environment = Interpreter.globals
 
-    def interpret(self, statements: list[Stmt]) -> LoxType:
+        class Clock(LoxCallable):
+            def arity(self) -> int:
+                return 0
+
+            def call(self, interpreter: Interpreter, arguments: list[object]) -> object:
+                return int(time.time_ns() / 1_000_000)
+            
+            def __repr__(self) -> str:
+                return f"<fn clock (builtin)>"
+
+        Interpreter.globals.define("clock", Clock())
+
+    def interpret(self, statements: list[Stmt]) -> object:
         try:
             for stmt in statements:
                 self.execute(stmt)
@@ -26,30 +42,30 @@ class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
 
     ############################ Visitor pattern implementation
 
-    def visitLiteralExpr(self, expr: Literal) -> LoxType:
+    def visitLiteralExpr(self, expr: Literal) -> object:
         """Simple, evaluates to the value contained inside"""
         return expr.value
     
-    def visitLogicalExpr(self, expr: expr.Logical) -> LoxType:
+    def visitLogicalExpr(self, expr: expr.Logical) -> object:
         """
         Short circuiting conditional. 
         a  or b => when a is  true, don't evaluate b return a, otherwise return b
         a and b => when a is false, don't evaluate b return a, otherwise return b
         """
-        left: LoxType = self.evaluate(expr.left)
+        left: object = self.evaluate(expr.left)
         if expr.operator.token_type == TokenType.OR:
             return left if self.isTruthy(left) else self.evaluate(expr.right)
         else:
             return left if not self.isTruthy(left) else self.evaluate(expr.right)
         
     
-    def visitGroupingExpr(self, expr: Grouping) -> LoxType:
+    def visitGroupingExpr(self, expr: Grouping) -> object:
         """Slightly more complicated, holds an expression inside that must be evaluated"""
         return self.evaluate(expr.expression)
     
-    def visitUnaryExpr(self, expr: Unary) -> LoxType:
+    def visitUnaryExpr(self, expr: Unary) -> object:
         """First evfaluate the contained expression, then apply the unary operator"""
-        right: LoxType = self.evaluate(expr.right)
+        right: object = self.evaluate(expr.right)
 
         match expr.operator.token_type:
             case TokenType.MINUS:
@@ -61,10 +77,10 @@ class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
             
         return None
 
-    def visitBinaryExpr(self, expr: Binary) -> LoxType:
+    def visitBinaryExpr(self, expr: Binary) -> object:
         """Holds two expressions inside that must be evaluated, together with the operator in between"""
-        left: LoxType = self.evaluate(expr.left)
-        right: LoxType = self.evaluate(expr.right)
+        left: object = self.evaluate(expr.left)
+        right: object = self.evaluate(expr.right)
 
         if not isinstance(left, (float, str, bool)) or not isinstance(right, (float, str, bool)):
             return None
@@ -101,17 +117,39 @@ class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
                 if isinstance(left, str) and isinstance(right, str):
                     return str(left) + str(right)
                 raise LoxRuntimeError(expr.operator, "Operands must be two numbers or two strings")
+            
+    def visitCallExpr(self, expr: Call) -> object:
+
+        callee: object = self.evaluate(expr.callee)
+        arguments: list[object] = []
+
+        for argument in expr.arguments:
+            arguments.append(self.evaluate(argument))
     
-    def visitVariableExpr(self, expr: Variable) -> LoxType:
+        if not isinstance(callee, LoxCallable):
+            raise LoxRuntimeError(expr.paren, "Can only call functions and classes.")
+        
+        function: LoxCallable = callee
+
+        if len(arguments) != function.arity():
+            raise LoxRuntimeError(expr.paren, f"Expected {function.arity()} arguments, but got {len(arguments)}.")
+        return function.call(self, arguments)
+
+    def visitVariableExpr(self, expr: Variable) -> object:
         return self.env.get(expr.name)
     
-    def visitAssignExpr(self, expr: Assign) -> LoxType:
-        value: LoxType = self.evaluate(expr.value)
+    def visitAssignExpr(self, expr: Assign) -> object:
+        value: object = self.evaluate(expr.value)
         self.env.assign(expr.name, value)
         return value
     
     def visitExpressionStmt(self, stmt: Expression) -> None:
         self.evaluate(stmt.expression)
+        return
+    
+    def visitFunctionStmt(self, stmt: Function) -> None:
+        function: LoxFunction = LoxFunction(stmt)
+        self.env.define(stmt.name.lexeme, function)
         return
     
     def visitIfStmt(self, stmt: If) -> None:
@@ -123,7 +161,7 @@ class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
         return
     
     def visitPrintStmt(self, stmt: Print) -> None:
-        value: LoxType = self.evaluate(stmt.expression)
+        value: object = self.evaluate(stmt.expression)
         print(self.stringify(value))
         return
     
@@ -131,7 +169,7 @@ class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
         """
         By default, if no init value is given, initialise the variable value to None (or 'nil' for Lox)
         """
-        value: LoxType = None
+        value: object = None
         if (stmt.initializer is not None):
             value = self.evaluate(stmt.initializer)
         
@@ -149,7 +187,7 @@ class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
     
     ######################## Helper methods
 
-    def evaluate(self, expr: Expr) -> LoxType:
+    def evaluate(self, expr: Expr) -> object:
         """Used in recursive step where the expression is looped back through the tree"""
         return expr.accept(self)
     
@@ -168,7 +206,7 @@ class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
         finally:
             self.env = previous
 
-    def isTruthy(self, value: LoxType) -> bool:
+    def isTruthy(self, value: object) -> bool:
         """
         Check if the value is truthy. This is defined as: 
         falsey => {False, nil}
@@ -181,16 +219,16 @@ class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
             return bool(value)
         return True
     
-    def isEqual(self, a: LoxType, b: LoxType):
-        """Test equality between two LoxType values"""
+    def isEqual(self, a: object, b: object):
+        """Test equality between two object values"""
         if a == None and b == None:
             return True
         if a == None:
             return False
         return a == b
     
-    def stringify(self, value: LoxType) -> str:
-        """Helper method for converting LoxType values to strings"""
+    def stringify(self, value: object) -> str:
+        """Helper method for converting object values to strings"""
         if value is None:
             return "nil"
         if isinstance(value, float):
@@ -199,12 +237,12 @@ class Interpreter(expr.Visitor[LoxType], stmt.Visitor[None]):
     
     ########################## Error generation
 
-    def checkNumberOperand(self, operator: Token, operand: LoxType):
+    def checkNumberOperand(self, operator: Token, operand: object):
         if isinstance(operand, float): 
             return True
         raise LoxRuntimeError(operator, "Operand must be a number")
     
-    def checkNumberOperands(self, operator: Token, left: LoxType, right: LoxType):
+    def checkNumberOperands(self, operator: Token, left: object, right: object):
         if isinstance(left, float) and isinstance(right, float): 
             return True
         raise LoxRuntimeError(operator, "Operands must be a number")
