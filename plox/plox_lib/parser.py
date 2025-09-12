@@ -1,6 +1,6 @@
 from .token import Token
 from .token_type import TokenType
-from .asts.stmt import Stmt, Print, Expression, Var, Block, If, While, Function
+from .asts.stmt import Stmt, Print, Expression, Var, Block, If, While, Function, Return
 from .asts.expr import Expr, Binary, Unary, Literal, Grouping, Variable, Assign, Logical, Call
 from .error import LoxParseError
 from .params import Params
@@ -16,11 +16,12 @@ class Parser:
     function    => IDENTIFIER "(" parameters? ")" block
     parameters  => IDENTIFIER ( "," IDENTIFIER )*
     varDecl     => "var" IDENTIFIER ( "=" expression )? ";"
-    statement   => exprStmt | forStmt | ifStmt | printStmt | whileStmt | block
+    statement   => exprStmt | forStmt | ifStmt | printStmt | returnStmt | whileStmt | block
     exprStmt    => expression ";"
     forStmt     => "for" "(" ( varDecl | exprStmt | ";") expression? ";" expression? ";" ")" statement
     ifStmt      => "if" "(" expression ")" statement ( "else" statement )?
     printStmt   => "print" expression ";" 
+    returnStmt  => "return" expression ";"
     whileStmt   => "while" "(" expression ")" statement
     block       => "{" declaration* "}"
     expression  => assignment
@@ -100,6 +101,8 @@ class Parser:
             return self.printStatement()
         if self.match(TokenType.LEFT_BRACE):
             return Block(self.block())
+        if self.match(TokenType.RETURN):
+            return self.returnStatement()
         if self.match(TokenType.WHILE):
             return self.whileStatement()
         if self.match(TokenType.FOR):
@@ -156,6 +159,14 @@ class Parser:
         value: Expr = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after value")
         return Print(value)
+    
+    def returnStatement(self) -> Stmt:
+        keyword: Token = self.previous()
+        value: Expr | None = None
+        if not self.check(TokenType.SEMICOLON):
+            value  = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after return value.")
+        return Return(keyword, value)
     
     def ifStatement(self) -> Stmt:
         """ifStmt      => "if" "(" expression ")" statement ( "else" statement )?"""

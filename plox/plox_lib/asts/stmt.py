@@ -21,6 +21,8 @@ class Visitor(ABC, Generic[T]):
 	@abstractmethod
 	def visitPrintStmt(self, stmt: "Print") -> T: ...
 	@abstractmethod
+	def visitReturnStmt(self, stmt: "Return") -> T: ...
+	@abstractmethod
 	def visitVarStmt(self, stmt: "Var") -> T: ...
 	@abstractmethod
 	def visitWhileStmt(self, stmt: "While") -> T: ...
@@ -68,6 +70,14 @@ class Print(Stmt):
 
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitPrintStmt(self)
+
+@dataclass
+class Return(Stmt):
+	keyword: Token
+	value: Expr | None
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitReturnStmt(self)
 
 @dataclass
 class Var(Stmt):

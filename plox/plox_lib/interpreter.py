@@ -1,11 +1,13 @@
 from .asts.expr import Expr, Binary, Grouping, Literal, Unary, Variable, Assign, Call
-from .asts.stmt import Stmt, Expression, Print, Var, Block, If, While, Function
+from .asts.stmt import Stmt, Expression, Print, Var, Block, If, While, Function, Return
 from .token_type import TokenType
 from .token import Token
 from .error import LoxRuntimeError
 from .environment import Environment
 from .lox_callable import LoxCallable
 from .lox_function import LoxFunction
+
+from . import control_flow
 
 # Circumvent circular import with lox.py
 from . import lox
@@ -148,7 +150,9 @@ class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
         return
     
     def visitFunctionStmt(self, stmt: Function) -> None:
-        function: LoxFunction = LoxFunction(stmt)
+        """Function definition, the function gets passed the current environment as a closure at the moment it is declared. 
+        And gets defined in the current environment scope."""
+        function: LoxFunction = LoxFunction(stmt, self.env)
         self.env.define(stmt.name.lexeme, function)
         return
     
@@ -164,6 +168,12 @@ class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
         value: object = self.evaluate(stmt.expression)
         print(self.stringify(value))
         return
+    
+    def visitReturnStmt(self, stmt: stmt.Return) -> None:
+        value: object = None
+        if stmt.value is not None:
+            value = self.evaluate(stmt.value)
+        raise control_flow.Return(value)
     
     def visitVarStmt(self, stmt: Var) -> None:
         """

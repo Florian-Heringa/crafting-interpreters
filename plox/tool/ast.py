@@ -93,6 +93,7 @@ if __name__ == "__main__":
         "Function    - name: Token, params: list[Token], body: list[Stmt]",
         "If         - condition: Expr, thenBranch: Stmt, elseBranch: Stmt | None",
         "Print      - expression: Expr",
+        "Return     - keyword: Token, value: Expr | None",
         "Var        - name: Token, initializer: Expr | None",
         "While      - condition: Expr, body: Stmt",
     ],

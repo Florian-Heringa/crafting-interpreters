@@ -1,0 +1,5 @@
+fun count(a, b, c) {
+    print a + b + c;
+}
+
+count(1, 2, 3);
