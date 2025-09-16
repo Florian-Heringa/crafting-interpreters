@@ -1,6 +1,6 @@
 from .token import Token
 from .token_type import TokenType
-from .asts.stmt import Stmt, Print, Expression, Var, Block, If, While, Function, Return
+from .asts.stmt import Stmt, Print, Expression, Var, Block, If, While, Function, Return, Class
 from .asts.expr import Expr, Binary, Unary, Literal, Grouping, Variable, Assign, Logical, Call
 from .error import LoxParseError
 from .params import Params
@@ -11,7 +11,8 @@ class Parser:
     """
     Parser class for the Lox language. The following grammar is encoded:
     program     => declaration* EOF
-    declaration => funDecl | varDecl | statement
+    declaration => classDecl | funDecl | varDecl | statement
+    classDecl   => "class" IDENTIFIER "{" function* "}"
     funDecl     => "fun" function
     function    => IDENTIFIER "(" parameters? ")" block
     parameters  => IDENTIFIER ( "," IDENTIFIER )*
@@ -60,14 +61,29 @@ class Parser:
         return self.assignment()
     
     def declaration(self) -> Stmt:
-        """declaration => varDecl | statement"""
+        """declaration => classDecl | funDecl | varDecl | statement"""
+        if self.match(TokenType.CLASS):
+            return self.classDeclaration()
         if self.match(TokenType.FUN):
             return self.function("function")
         if self.match(TokenType.VAR):
             return self.varDeclaration()
         return self.statement()
     
-    def function(self, kind: str) -> Stmt:
+    def classDeclaration(self) -> Stmt:
+        """classDecl   => "class" IDENTIFIER "{" function* "}\""""
+        name: Token = self.consume(TokenType.IDENTIFIER, "Expect class name.")
+        self.consume(TokenType.LEFT_BRACE, "Expect '{' before class body")
+
+        methods: list[Function] = []
+        while not self.check(TokenType.RIGHT_BRACE) and not self.isAtEnd():
+            methods.append(self.function("method"))
+        self.consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
+
+        return Class(name, methods)
+    
+    def function(self, kind: str) -> Function:
+        """function    => IDENTIFIER "(" parameters? ")" block"""
         name: Token = self.consume(TokenType.IDENTIFIER, f"Expect {kind} name.")
         self.consume(TokenType.LEFT_PAREN, f"Expect'(' after {kind} name.")
         parameters: list[Token] = []

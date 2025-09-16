@@ -137,6 +137,11 @@ class Resolver(stmt.Visitor[None], expr.Visitor[None]):
         self.resolveExpression(stmt.condition)
         self.resolveStatement(stmt.body)
         return
+    
+    def visitClassStmt(self, stmt: stmt.Class) -> None:
+        self.declare(stmt.name)
+        self.define(stmt.name)
+        return
 
     ############################### expr.Visitor implementation
 

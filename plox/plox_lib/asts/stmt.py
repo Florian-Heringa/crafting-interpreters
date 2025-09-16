@@ -13,6 +13,8 @@ class Visitor(ABC, Generic[T]):
 	@abstractmethod
 	def visitBlockStmt(self, stmt: "Block") -> T: ...
 	@abstractmethod
+	def visitClassStmt(self, stmt: "Class") -> T: ...
+	@abstractmethod
 	def visitExpressionStmt(self, stmt: "Expression") -> T: ...
 	@abstractmethod
 	def visitFunctionStmt(self, stmt: "Function") -> T: ...
@@ -38,6 +40,14 @@ class Block(Stmt):
 
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitBlockStmt(self)
+
+@dataclass(eq=True, frozen=True)
+class Class(Stmt):
+	name: Token
+	methods: list["Function"]
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitClassStmt(self)
 
 @dataclass(eq=True, frozen=True)
 class Expression(Stmt):

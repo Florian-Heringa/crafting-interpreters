@@ -71,11 +71,6 @@ def _define_visitor(base_name: str, description) -> list[str]:
 
 if __name__ == "__main__":
     
-    # For the representation in python for Lox type there are technically no restraints
-    # since a python variable can hold any type of any value. However, for the purpose of
-    # intellisense and code checking, the Literal type has been restricted with pydantic to
-    # only allow the types that are actually used. This is slightly different from the book,
-    # where the java code uses the Object type to hold arbitrary data.
     generate_ast_file("Expr", [
         "Assign   - name: Token, value: Expr",
         "Binary   - left: Expr, operator: Token, right: Expr",
@@ -89,8 +84,9 @@ if __name__ == "__main__":
 
     generate_ast_file("Stmt", [
         "Block      - statements: list[Stmt]",
+        "Class      - name: Token, methods: list[\"Function\"]",
         "Expression - expression: Expr",
-        "Function    - name: Token, params: list[Token], body: list[Stmt]",
+        "Function   - name: Token, params: list[Token], body: list[Stmt]",
         "If         - condition: Expr, thenBranch: Stmt, elseBranch: Stmt | None",
         "Print      - expression: Expr",
         "Return     - keyword: Token, value: Expr | None",

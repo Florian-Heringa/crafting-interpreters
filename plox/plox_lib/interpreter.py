@@ -6,6 +6,7 @@ from .error import LoxRuntimeError
 from .environment import Environment
 from .lox_callable import LoxCallable
 from .lox_function import LoxFunction
+from .lox_class import LoxClass
 
 from . import control_flow
 
@@ -197,6 +198,12 @@ class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
     
     def visitBlockStmt(self, stmt: Block) -> None:
         self.executeBlock(stmt.statements, Environment(self.env))
+        return
+    
+    def visitClassStmt(self, stmt: stmt.Class) -> None:
+        self.env.define(stmt.name.lexeme, None)
+        newClass: LoxClass = LoxClass(stmt.name.lexeme)
+        self.env.assign(stmt.name, newClass)
         return
     
     def visitWhileStmt(self, stmt: While) -> None:

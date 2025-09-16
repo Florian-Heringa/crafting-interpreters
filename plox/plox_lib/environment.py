@@ -42,6 +42,9 @@ class Environment:
         return env
     
     def assign(self, name: Token, value: object):
+        """
+        Assign a loxValue to a specified name. The input of this function is a token so we can do proper error reporting (including line number).
+        """
         if name.lexeme in self.values:
             self.values[name.lexeme] = value
             return
