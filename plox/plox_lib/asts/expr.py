@@ -26,12 +26,12 @@ class Visitor(ABC, Generic[T]):
 	@abstractmethod
 	def visitVariableExpr(self, expr: "Variable") -> T: ...
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Expr:
 	@abstractmethod
 	def accept(self, visitor: Visitor) -> Any: ...
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Assign(Expr):
 	name: Token
 	value: Expr
@@ -39,7 +39,7 @@ class Assign(Expr):
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitAssignExpr(self)
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Binary(Expr):
 	left: Expr
 	operator: Token
@@ -48,7 +48,7 @@ class Binary(Expr):
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitBinaryExpr(self)
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Call(Expr):
 	callee: Expr
 	paren: Token
@@ -57,21 +57,21 @@ class Call(Expr):
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitCallExpr(self)
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Grouping(Expr):
 	expression: Expr
 
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitGroupingExpr(self)
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Literal(Expr):
 	value: object
 
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitLiteralExpr(self)
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Logical(Expr):
 	left: Expr
 	operator: Token
@@ -80,7 +80,7 @@ class Logical(Expr):
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitLogicalExpr(self)
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Unary(Expr):
 	operator: Token
 	right: Expr
@@ -88,7 +88,7 @@ class Unary(Expr):
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitUnaryExpr(self)
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Variable(Expr):
 	name: Token
 

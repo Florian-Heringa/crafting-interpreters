@@ -9,3 +9,9 @@ class LoxRuntimeError(Exception):
         super().__init__()
         self.token = token
         self.message = message
+
+class LoxVariableAccessError(Exception):
+    
+    def __init__(self, message):
+        super().__init__()
+        self.message = message

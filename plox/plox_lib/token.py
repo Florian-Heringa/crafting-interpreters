@@ -2,7 +2,7 @@ from pydantic.dataclasses import dataclass
 
 from .token_type import TokenType
 
-@dataclass
+@dataclass(eq=True, frozen=True)
 class Token:
 
     token_type: TokenType

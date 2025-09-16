@@ -1,5 +1,5 @@
 from .token import Token
-from .error import LoxRuntimeError
+from .error import LoxRuntimeError, LoxVariableAccessError
 
 class Environment:
 
@@ -29,6 +29,18 @@ class Environment:
             return self.enclosing.get(name)
         raise LoxRuntimeError(name, f"Undefined variable '{name.lexeme}'.")
     
+    def getAt(self, name: str, depth: int) -> object:
+        return self.ancestor(depth).values.get(name)
+    
+    def ancestor(self, distance: int) -> "Environment":
+        env: Environment = self
+        # Walk up the scope chain for anumber of steps
+        for i in range(distance):
+            if env.enclosing is None:
+                raise LoxVariableAccessError("Top level reached without finding variable <THIS IS A BUG>")
+            env = env.enclosing
+        return env
+    
     def assign(self, name: Token, value: object):
         if name.lexeme in self.values:
             self.values[name.lexeme] = value
@@ -38,3 +50,6 @@ class Environment:
             self.enclosing.assign(name, value)
             return
         raise LoxRuntimeError(name, f"Undefined variable '{name.lexeme}'.")
+    
+    def assignAt(self, distance: int, name: Token, value: object):
+        self.ancestor(distance).values[name.lexeme] = value

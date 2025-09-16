@@ -1,6 +1,7 @@
 from typing import Annotated
 from pydantic import constr
 import re
+from enum import Enum
 
 from .token_type import TokenType
 
@@ -51,3 +52,5 @@ KEYWORDS = {
     "var": TokenType.VAR,
     "while": TokenType.WHILE,
 }
+
+FunctionType = Enum("FunctionType", "NONE, FUNCTION")

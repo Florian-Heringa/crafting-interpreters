@@ -26,7 +26,7 @@ def generate_ast_file(base_name: str,
     lines += _define_visitor(base_name, data)
 
     lines += [
-        "@dataclass",
+        "@dataclass(eq=True, frozen=True)",
         f"class {base_name}:",
         "\t@abstractmethod",
         "\tdef accept(self, visitor: Visitor) -> Any: ...",
@@ -42,7 +42,7 @@ def generate_ast_file(base_name: str,
 
 def _generate_ast_class(base_class: str, class_name: str, description: str) -> list[str]:
     lines = [
-        "@dataclass",
+        "@dataclass(eq=True, frozen=True)",
         f"class {class_name}({base_class}):",
     ]
 

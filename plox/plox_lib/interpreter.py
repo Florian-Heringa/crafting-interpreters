@@ -22,6 +22,7 @@ class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
 
     def __init__(self):
         self.env: Environment = Interpreter.globals
+        self.locals: dict[Expr, int] = {}
 
         class Clock(LoxCallable):
             def arity(self) -> int:
@@ -41,6 +42,9 @@ class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
                 self.execute(stmt)
         except LoxRuntimeError as err:
             lox.Lox.runtimeError(err)
+
+    def resolve(self, expr: Expr, depth: int):
+        self.locals[expr] = depth
 
     ############################ Visitor pattern implementation
 
@@ -138,11 +142,16 @@ class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
         return function.call(self, arguments)
 
     def visitVariableExpr(self, expr: Variable) -> object:
-        return self.env.get(expr.name)
+        #return self.env.get(expr.name)
+        return self.lookupVariable(expr.name, expr)
     
     def visitAssignExpr(self, expr: Assign) -> object:
         value: object = self.evaluate(expr.value)
-        self.env.assign(expr.name, value)
+        distance: int | None = self.locals.get(expr)
+        if distance is not None:
+            self.env.assignAt(distance, expr.name, value)
+        else:
+            self.globals.assign(expr.name, value)
         return value
     
     def visitExpressionStmt(self, stmt: Expression) -> None:
@@ -196,6 +205,18 @@ class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
         return
     
     ######################## Helper methods
+
+    def lookupVariable(self, name: Token, expr: Expr) -> object:
+        """
+        After a Resolver pass we know where the resolved variable should be, so we can traverse
+        the stack of scopes and find the correct resolution. If it is not found (no distance value is known),
+        try to find it in the global scope.
+        """
+        distance: int | None = self.locals.get(expr)
+        if distance is not None:
+            return self.env.getAt(name.lexeme, distance)
+        else:
+            return self.globals.get(name)
 
     def evaluate(self, expr: Expr) -> object:
         """Used in recursive step where the expression is looped back through the tree"""
