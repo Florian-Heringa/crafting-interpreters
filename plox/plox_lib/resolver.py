@@ -2,7 +2,7 @@ from .interpreter import Interpreter
 from .asts.stmt import Stmt
 from .asts.expr import Expr
 from .token import Token
-from .utils import FunctionType
+from .utils import FunctionType, ClassType
 
 from .asts import expr, stmt
 
@@ -14,6 +14,9 @@ class Resolver(stmt.Visitor[None], expr.Visitor[None]):
     It contains a reference to the interpreter (where the actual scope contents are stored)
     and a map of which variables are declared and defined, dynamically generated during traversal of the
     syntax tree.
+
+    It is run as a separate pass before the code is executed and mostly used for static analysis
+    and variable resolution.
     """
 
     def __init__(self, interpreter: Interpreter):
@@ -23,6 +26,7 @@ class Resolver(stmt.Visitor[None], expr.Visitor[None]):
         # variable, function or class, the bool is if it is initialised fully.
         self.scopes: list[dict[str, bool]] = []
         self.currentFunction: FunctionType = FunctionType.NONE
+        self.currentClass: ClassType = ClassType.NONE
 
     def noScope(self) -> bool:
         return len(self.scopes) == 0
@@ -47,7 +51,7 @@ class Resolver(stmt.Visitor[None], expr.Visitor[None]):
         # Go through all scopes from nearest up to global to resolve a variable to the closest possible option
         for i in range(self.numScopes()):
             # If found, defer to the interpreter to get the actual resolution content
-            if name.lexeme in self.scopes[-i]:
+            if name.lexeme in self.scopes[self.numScopes() - 1 - i]:
                 self.interpreter.resolve(expr, i)
                 return
             
@@ -139,8 +143,24 @@ class Resolver(stmt.Visitor[None], expr.Visitor[None]):
         return
     
     def visitClassStmt(self, stmt: stmt.Class) -> None:
+        enclosingClass: ClassType = self.currentClass
+        self.currentClass = ClassType.CLASS
+
         self.declare(stmt.name)
         self.define(stmt.name)
+
+        self.beginScope()
+        # Make sure 'this' is bound for each class in the class scope
+        # similar to a closure
+        self.peekScope()["this"] = True
+
+        for method in stmt.methods:
+            declaration: FunctionType = FunctionType.METHOD
+            self.resolveFunction(method, declaration)
+
+        self.endScope()
+
+        self.currentClass = enclosingClass
         return
 
     ############################### expr.Visitor implementation
@@ -171,6 +191,22 @@ class Resolver(stmt.Visitor[None], expr.Visitor[None]):
         self.resolveExpression(expr.callee)
         for argument in expr.arguments:
             self.resolveExpression(argument)
+        return
+    
+    def visitGetExpr(self, expr: expr.Get) -> None:
+        self.resolveExpression(expr.object)
+        return
+    
+    def visitSetExpr(self, expr: expr.Set) -> None:
+        self.resolveExpression(expr.value)
+        self.resolveExpression(expr.object)
+        return
+    
+    def visitThisExpr(self, expr: expr.This) -> None:
+        if self.currentClass == ClassType.NONE:
+            lox.Lox.error(expr.keyword, "Can't use 'this' outside of a class.")
+            return
+        self.resolveLocal(expr, expr.keyword)
         return
     
     def visitGroupingExpr(self, expr: expr.Grouping) -> None:

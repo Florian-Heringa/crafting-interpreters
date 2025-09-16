@@ -26,6 +26,7 @@ def generate_ast_file(base_name: str,
     lines += _define_visitor(base_name, data)
 
     lines += [
+        "# Required to be frozen and eq since they are used as keys in dicts and need to be hashable",
         "@dataclass(eq=True, frozen=True)",
         f"class {base_name}:",
         "\t@abstractmethod",
@@ -75,9 +76,12 @@ if __name__ == "__main__":
         "Assign   - name: Token, value: Expr",
         "Binary   - left: Expr, operator: Token, right: Expr",
         "Call     - callee: Expr, paren: Token, arguments: list[Expr]", 
+        "Get      - object: Expr, name: Token",
         "Grouping - expression: Expr",
         "Literal  - value: object",
         "Logical  - left: Expr, operator: Token, right: Expr",
+        "Set      - object: Expr, name: Token, value: Expr",
+        "This     - keyword: Token",
         "Unary    - operator: Token, right: Expr",
         "Variable - name: Token",
     ])

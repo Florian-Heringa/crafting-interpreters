@@ -29,6 +29,7 @@ class Visitor(ABC, Generic[T]):
 	@abstractmethod
 	def visitWhileStmt(self, stmt: "While") -> T: ...
 
+# Required to be frozen and eq since they are used as keys in dicts and need to be hashable
 @dataclass(eq=True, frozen=True)
 class Stmt:
 	@abstractmethod

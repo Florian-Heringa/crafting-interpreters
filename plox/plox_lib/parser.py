@@ -1,7 +1,7 @@
 from .token import Token
 from .token_type import TokenType
 from .asts.stmt import Stmt, Print, Expression, Var, Block, If, While, Function, Return, Class
-from .asts.expr import Expr, Binary, Unary, Literal, Grouping, Variable, Assign, Logical, Call
+from .asts.expr import Expr, Binary, Unary, Literal, Grouping, Variable, Assign, Logical, Call, Get, Set, This
 from .error import LoxParseError
 from .params import Params
 
@@ -26,7 +26,7 @@ class Parser:
     whileStmt   => "while" "(" expression ")" statement
     block       => "{" declaration* "}"
     expression  => assignment
-    assignment  => IDENTIFIER "=" assignment | logic_or
+    assignment  => ( call "." )? IDENTIFIER "=" assignment | logic_or
     logic_or    => logic_and ("or" logic_and)*
     logic_and   => equality ("and" equality)*
     equality    => comparison ( ( "!=" | "==" ) comparison )*
@@ -34,7 +34,7 @@ class Parser:
     term        => factor ( ( "-" | "+" ) factor )*
     factor      => unary ( ( "/" | "*" ) unary )*
     unary       => ( "!" | "-" ) unary | call
-    call        => primary ( "(" arguments? ")" )*
+    call        => primary ( "(" arguments? ")" | "." IDENTIFIER )*
     arguments   => expression ( "," expression )*
     primary     => NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER
     """
@@ -55,10 +55,6 @@ class Parser:
         return statements
 
     ########### Grammar rules encoding
-
-    def expression(self) -> Expr:
-        """expression  => assignment"""
-        return self.assignment()
     
     def declaration(self) -> Stmt:
         """declaration => classDecl | funDecl | varDecl | statement"""
@@ -219,20 +215,33 @@ class Parser:
 
         return statements
     
+    def expression(self) -> Expr:
+        """expression  => assignment"""
+        return self.assignment()
+    
     def assignment(self) -> Expr:
-        """assignment  => IDENTIFIER "=" assignment | logic_or"""
+        """assignment  => ( call "." )? IDENTIFIER "=" assignment | logic_or"""
+
+        # Start parsing the expression
         expr: Expr = self.logic_or()
 
         # if the found expression is followed by an "=", it *must* be an assignment
         # So it should fall through to the 'primary' rule, yielding a Variable.
         # Anything else results in an error
         if self.match(TokenType.EQUAL):
+            # The info of "=" itself
             equals: Token = self.previous()
+            # the rhs, which can be an equality itself, otherwise drop down the priority list
             value: Expr = self.assignment()
 
-            if (isinstance(expr, Variable)):
+            # If what we found for the lhs is a variable, parse the rhs and assign
+            if isinstance(expr, Variable):
                 name: Token = expr.name
                 return Assign(name, value)
+            # If the lhs has the form of a 'Get' expression, transform it into
+            # a corresponding 'Set' expression
+            elif isinstance(expr, Get):
+                return Set(expr.object, expr.name, value)
             self.error(equals, "Invalid assignment target.")
         
         return expr
@@ -312,11 +321,15 @@ class Parser:
     
     
     def call(self) -> Expr:
+        """call        => primary ( "(" arguments? ")" | "." IDENTIFIER )*"""
         expr: Expr = self.primary()
 
         while True:
             if self.match(TokenType.LEFT_PAREN):
                 expr = self.finishCall(expr)
+            elif self.match(TokenType.DOT):
+                name: Token = self.consume(TokenType.IDENTIFIER, "Expect property name after '.'.")
+                expr = Get(expr, name)
             else:
                 break
 
@@ -344,6 +357,8 @@ class Parser:
         if self.match(TokenType.NIL): return Literal(None)
         if self.match(TokenType.NUMBER, TokenType.STRING):
             return Literal(self.previous().literal)
+        if self.match(TokenType.THIS):
+            return This(self.previous())
         if self.match(TokenType.IDENTIFIER):
             return Variable(self.previous())
         if self.match(TokenType.LEFT_PAREN):

@@ -5,6 +5,7 @@ from .asts.stmt import Function
 from .environment import Environment
 
 from . import control_flow
+from . import lox_instance
 
 if TYPE_CHECKING:
     from .interpreter import Interpreter
@@ -32,10 +33,16 @@ class LoxFunction(LoxCallable):
         
         return None
         
-        
+    def bind(self, instance: "lox_instance.LoxInstance") -> "LoxFunction":
+        environment: Environment = Environment(self.closure)
+        environment.define("this", instance)
+        return LoxFunction(self.declaration, environment)
     
     def arity(self) -> int:
         return len(self.declaration.params)
     
     def __str__(self) -> str:
         return f"<fn {self.declaration.name.lexeme} >"
+    
+    def __repr__(self) -> str:
+        return self.__str__()

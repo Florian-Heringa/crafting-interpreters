@@ -16,16 +16,23 @@ class Visitor(ABC, Generic[T]):
 	@abstractmethod
 	def visitCallExpr(self, expr: "Call") -> T: ...
 	@abstractmethod
+	def visitGetExpr(self, expr: "Get") -> T: ...
+	@abstractmethod
 	def visitGroupingExpr(self, expr: "Grouping") -> T: ...
 	@abstractmethod
 	def visitLiteralExpr(self, expr: "Literal") -> T: ...
 	@abstractmethod
 	def visitLogicalExpr(self, expr: "Logical") -> T: ...
 	@abstractmethod
+	def visitSetExpr(self, expr: "Set") -> T: ...
+	@abstractmethod
+	def visitThisExpr(self, expr: "This") -> T: ...
+	@abstractmethod
 	def visitUnaryExpr(self, expr: "Unary") -> T: ...
 	@abstractmethod
 	def visitVariableExpr(self, expr: "Variable") -> T: ...
 
+# Required to be frozen and eq since they are used as keys in dicts and need to be hashable
 @dataclass(eq=True, frozen=True)
 class Expr:
 	@abstractmethod
@@ -58,6 +65,14 @@ class Call(Expr):
 		return visitor.visitCallExpr(self)
 
 @dataclass(eq=True, frozen=True)
+class Get(Expr):
+	object: Expr
+	name: Token
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitGetExpr(self)
+
+@dataclass(eq=True, frozen=True)
 class Grouping(Expr):
 	expression: Expr
 
@@ -79,6 +94,22 @@ class Logical(Expr):
 
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitLogicalExpr(self)
+
+@dataclass(eq=True, frozen=True)
+class Set(Expr):
+	object: Expr
+	name: Token
+	value: Expr
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitSetExpr(self)
+
+@dataclass(eq=True, frozen=True)
+class This(Expr):
+	keyword: Token
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitThisExpr(self)
 
 @dataclass(eq=True, frozen=True)
 class Unary(Expr):

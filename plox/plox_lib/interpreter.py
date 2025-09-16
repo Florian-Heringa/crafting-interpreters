@@ -7,6 +7,7 @@ from .environment import Environment
 from .lox_callable import LoxCallable
 from .lox_function import LoxFunction
 from .lox_class import LoxClass
+from .lox_instance import LoxInstance
 
 from . import control_flow
 
@@ -141,9 +142,28 @@ class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
         if len(arguments) != function.arity():
             raise LoxRuntimeError(expr.paren, f"Expected {function.arity()} arguments, but got {len(arguments)}.")
         return function.call(self, arguments)
+    
+    def visitGetExpr(self, expr: expr.Get) -> object:
+        obj: object = self.evaluate(expr.object)
+        if isinstance(obj, LoxInstance):
+            return obj.get(expr.name)
+        raise LoxRuntimeError(expr.name, "Only instances have properties.")
+    
+    def visitSetExpr(self, expr: expr.Set) -> object:
+        obj: object = self.evaluate(expr.object)
+
+        if not isinstance(obj, LoxInstance):
+            raise LoxRuntimeError(expr.name, "Only instances have fields.")
+        
+        value: object = self.evaluate(expr.value)
+        obj.set(expr.name, value)
+
+        return value
+    
+    def visitThisExpr(self, expr: expr.This) -> object:
+        return self.lookupVariable(expr.keyword, expr)
 
     def visitVariableExpr(self, expr: Variable) -> object:
-        #return self.env.get(expr.name)
         return self.lookupVariable(expr.name, expr)
     
     def visitAssignExpr(self, expr: Assign) -> object:
@@ -202,7 +222,13 @@ class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
     
     def visitClassStmt(self, stmt: stmt.Class) -> None:
         self.env.define(stmt.name.lexeme, None)
-        newClass: LoxClass = LoxClass(stmt.name.lexeme)
+
+        methods: dict[str, LoxFunction] = {}
+        for method in stmt.methods:
+            function: LoxFunction = LoxFunction(method, self.env)
+            methods[method.name.lexeme] = function
+
+        newClass: LoxClass = LoxClass(stmt.name.lexeme, methods)
         self.env.assign(stmt.name, newClass)
         return
     

@@ -7,6 +7,9 @@ class Environment:
         self.values: dict[str, object] = {}
         self.enclosing: Environment | None = enclosing
 
+    def __str__(self) -> str:
+        return f"{self.values} => {self.enclosing}"
+
     def define(self, name: str, value: object):
         """ 
         The way this function works allows for redefinition of variables. 
@@ -30,6 +33,7 @@ class Environment:
         raise LoxRuntimeError(name, f"Undefined variable '{name.lexeme}'.")
     
     def getAt(self, name: str, depth: int) -> object:
+        """Same as 'get', but a certain distance (depth) up the ineritance chain of environments."""
         return self.ancestor(depth).values.get(name)
     
     def ancestor(self, distance: int) -> "Environment":
