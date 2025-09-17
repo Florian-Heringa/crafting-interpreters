@@ -9,8 +9,9 @@ class LoxClass(LoxCallable):
     Container for a Lox Class. Holds methods.
     """
 
-    def __init__(self, name: str, methods: "dict[str, lox_function.LoxFunction]"):
+    def __init__(self, name: str, superclass: "LoxClass | None", methods: "dict[str, lox_function.LoxFunction]"):
         self.name: str = name
+        self.superclass: LoxClass | None = superclass
         self.methods: "dict[str, lox_function.LoxFunction]" = methods
 
     def __str__(self) -> str:
@@ -39,4 +40,6 @@ class LoxClass(LoxCallable):
     def find_method(self, name: str) -> "lox_function.LoxFunction | None":
         if name in self.methods:
             return self.methods[name]
+        if self.superclass is not None:
+            return self.superclass.find_method(name)
         return

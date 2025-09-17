@@ -26,6 +26,8 @@ class Visitor(ABC, Generic[T]):
 	@abstractmethod
 	def visitSetExpr(self, expr: "Set") -> T: ...
 	@abstractmethod
+	def visitSuperExpr(self, expr: "Super") -> T: ...
+	@abstractmethod
 	def visitThisExpr(self, expr: "This") -> T: ...
 	@abstractmethod
 	def visitUnaryExpr(self, expr: "Unary") -> T: ...
@@ -103,6 +105,14 @@ class Set(Expr):
 
 	def accept(self, visitor: Visitor) -> Any:
 		return visitor.visitSetExpr(self)
+
+@dataclass(eq=True, frozen=True)
+class Super(Expr):
+	keyword: Token
+	method: Token
+
+	def accept(self, visitor: Visitor) -> Any:
+		return visitor.visitSuperExpr(self)
 
 @dataclass(eq=True, frozen=True)
 class This(Expr):

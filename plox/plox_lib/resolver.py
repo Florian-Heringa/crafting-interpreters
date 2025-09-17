@@ -8,6 +8,17 @@ from .asts import expr, stmt
 
 from . import lox
 
+class Scoped:
+
+    def __init__(self, resolver: "Resolver"):
+        self.resolver = resolver
+
+    def __enter__(self):
+        self.resolver.scopes.append({})
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        self.resolver.scopes.pop()
+
 class Resolver(stmt.Visitor[None], expr.Visitor[None]):
     """ 
     This class is used to resolve variables, functions and classes to it's correct scope.
@@ -48,6 +59,7 @@ class Resolver(stmt.Visitor[None], expr.Visitor[None]):
         expression.accept(self)
 
     def resolveLocal(self, expr: Expr, name: Token):
+        """Resolve a local variable to the nearest definition."""
         # Go through all scopes from nearest up to global to resolve a variable to the closest possible option
         for i in range(self.numScopes()):
             # If found, defer to the interpreter to get the actual resolution content
@@ -61,12 +73,11 @@ class Resolver(stmt.Visitor[None], expr.Visitor[None]):
         enclosingFunction: FunctionType = self.currentFunction
         self.currentFunction = kind
 
-        self.beginScope()
-        for param in function.params:
-            self.declare(param)
-            self.define(param)
-        self.resolveStatements(function.body)
-        self.endScope()
+        with Scoped(self):
+            for param in function.params:
+                self.declare(param)
+                self.define(param)
+            self.resolveStatements(function.body)
 
         # Restore function nesting state to before
         self.currentFunction = enclosingFunction
@@ -90,15 +101,13 @@ class Resolver(stmt.Visitor[None], expr.Visitor[None]):
         """Set a declared variable to initialised"""
         if self.noScope():
             return
-        self.peekScope()[name.lexeme] = True
-
+        self.peekScope()[name.lexeme] = True    
 
     ############################### stmt.Visitor implementation
 
     def visitBlockStmt(self, stmt: stmt.Block) -> None:
-        self.beginScope()
-        self.resolveStatements(stmt.statements)
-        self.endScope()
+        with Scoped(self):
+            self.resolveStatements(stmt.statements)
         return
     
     def visitVarStmt(self, stmt: stmt.Var) -> None:
@@ -151,16 +160,41 @@ class Resolver(stmt.Visitor[None], expr.Visitor[None]):
         self.declare(stmt.name)
         self.define(stmt.name)
 
-        self.beginScope()
-        # Make sure 'this' is bound for each class in the class scope
-        # similar to a closure
-        self.peekScope()["this"] = True
+        if stmt.superclass is not None:
+            if stmt.name.lexeme == stmt.superclass.name.lexeme:
+                lox.Lox.error(stmt.superclass.name, "Class can't inherit from itself.")
 
-        for method in stmt.methods:
-            declaration: FunctionType = FunctionType.INITIALIZER if method.name.lexeme == "init" else FunctionType.METHOD
-            self.resolveFunction(method, declaration)
+            self.currentClass = ClassType.SUBCLASS
+            self.resolveExpression(stmt.superclass)
 
-        self.endScope()
+            with Scoped(self):
+                # Make sure super is bound when there is a superclass
+                self.peekScope()["super"] = True
+                with Scoped(self):
+                    self.peekScope()["this"] = True
+                    for method in stmt.methods:
+                        declaration: FunctionType = FunctionType.INITIALIZER if method.name.lexeme == "init" else FunctionType.METHOD
+                        self.resolveFunction(method, declaration)
+        else:
+            with Scoped(self):
+                self.peekScope()["this"] = True
+                for method in stmt.methods:
+                    declaration: FunctionType = FunctionType.INITIALIZER if method.name.lexeme == "init" else FunctionType.METHOD
+                    self.resolveFunction(method, declaration)
+
+        # self.beginScope()
+        # # Make sure 'this' is bound for each class in the class scope
+        # # similar to a closure
+        # self.peekScope()["this"] = True
+
+        # for method in stmt.methods:
+        #     declaration: FunctionType = FunctionType.INITIALIZER if method.name.lexeme == "init" else FunctionType.METHOD
+        #     self.resolveFunction(method, declaration)
+
+        # self.endScope()
+
+        # if stmt.superclass is not None:
+        #     self.endScope()
 
         self.currentClass = enclosingClass
         return
@@ -171,7 +205,7 @@ class Resolver(stmt.Visitor[None], expr.Visitor[None]):
         # In the case the variable has been declared, but not yet initialised, this is an error
         # This would be the case where the variable is used in its own initialiser
         if not self.noScope() and self.peekScope().get(expr.name.lexeme) == False:
-            print("\t", expr, "\n\t\t", self.noScope(), self.peekScope(), self.scopes)
+            #print("\t", expr, "\n\t\t", self.noScope(), self.peekScope(), self.scopes)
             lox.Lox.error(expr.name, "Can't read local variable in its own initialiser")
 
         self.resolveLocal(expr, expr.name)
@@ -202,6 +236,14 @@ class Resolver(stmt.Visitor[None], expr.Visitor[None]):
     def visitSetExpr(self, expr: expr.Set) -> None:
         self.resolveExpression(expr.value)
         self.resolveExpression(expr.object)
+        return
+    
+    def visitSuperExpr(self, expr: expr.Super) -> None:
+        if self.currentClass == ClassType.NONE:
+            lox.Lox.error(expr.keyword, "Can't use 'super' outside of a class.")
+        elif self.currentClass != ClassType.SUBCLASS:
+            lox.Lox.error(expr.keyword, "Can't use 'super' in a class without a subclass.")
+        self.resolveLocal(expr, expr.keyword)
         return
     
     def visitThisExpr(self, expr: expr.This) -> None:

@@ -5,7 +5,7 @@ from typing import Any, TypeVar, Generic
 from abc import abstractmethod, ABC
 
 from ..token import Token
-from .expr import Expr
+from .expr import Expr, Variable
 
 T = TypeVar("T")
 
@@ -45,6 +45,7 @@ class Block(Stmt):
 @dataclass(eq=True, frozen=True)
 class Class(Stmt):
 	name: Token
+	superclass: Variable | None
 	methods: list["Function"]
 
 	def accept(self, visitor: Visitor) -> Any:

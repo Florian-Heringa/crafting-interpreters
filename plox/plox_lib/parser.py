@@ -1,7 +1,7 @@
 from .token import Token
 from .token_type import TokenType
-from .asts.stmt import Stmt, Print, Expression, Var, Block, If, While, Function, Return, Class
-from .asts.expr import Expr, Binary, Unary, Literal, Grouping, Variable, Assign, Logical, Call, Get, Set, This
+from .asts.stmt import *
+from .asts.expr import *
 from .error import LoxParseError
 from .params import Params
 
@@ -12,7 +12,7 @@ class Parser:
     Parser class for the Lox language. The following grammar is encoded:
     program     => declaration* EOF
     declaration => classDecl | funDecl | varDecl | statement
-    classDecl   => "class" IDENTIFIER "{" function* "}"
+    classDecl   => "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}"
     funDecl     => "fun" function
     function    => IDENTIFIER "(" parameters? ")" block
     parameters  => IDENTIFIER ( "," IDENTIFIER )*
@@ -36,7 +36,7 @@ class Parser:
     unary       => ( "!" | "-" ) unary | call
     call        => primary ( "(" arguments? ")" | "." IDENTIFIER )*
     arguments   => expression ( "," expression )*
-    primary     => NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER
+    primary     => NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER | "super" "." IDENTIFIER
     """
 
     def __init__(self, tokens: list[Token]):
@@ -67,16 +67,20 @@ class Parser:
         return self.statement()
     
     def classDeclaration(self) -> Stmt:
-        """classDecl   => "class" IDENTIFIER "{" function* "}\""""
+        """classDecl   => "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}\""""
         name: Token = self.consume(TokenType.IDENTIFIER, "Expect class name.")
-        self.consume(TokenType.LEFT_BRACE, "Expect '{' before class body")
 
+        superclass: Variable | None = None
+        if self.match(TokenType.LESS):
+            superclass = Variable(self.consume(TokenType.IDENTIFIER, "Expect"))
+
+        self.consume(TokenType.LEFT_BRACE, "Expect '{' before class body")
         methods: list[Function] = []
         while not self.check(TokenType.RIGHT_BRACE) and not self.isAtEnd():
             methods.append(self.function("method"))
         self.consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
 
-        return Class(name, methods)
+        return Class(name, superclass, methods)
     
     def function(self, kind: str) -> Function:
         """function    => IDENTIFIER "(" parameters? ")" block"""
@@ -351,12 +355,17 @@ class Parser:
         return Call(callee, paren, arguments)
 
     def primary(self) -> Expr:
-        """primary     => NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")\" | IDENTIFIER"""
+        """primary     => NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER | "super" "." IDENTIFIER"""
         if self.match(TokenType.FALSE): return Literal(False)
         if self.match(TokenType.TRUE): return Literal(True)
         if self.match(TokenType.NIL): return Literal(None)
         if self.match(TokenType.NUMBER, TokenType.STRING):
             return Literal(self.previous().literal)
+        if self.match(TokenType.SUPER):
+            keyword: Token = self.previous()
+            self.consume(TokenType.DOT, "Expect '.' after 'super'.")
+            method: Token = self.consume(TokenType.IDENTIFIER, "Expect superclass method name.")
+            return Super(keyword, method)
         if self.match(TokenType.THIS):
             return This(self.previous())
         if self.match(TokenType.IDENTIFIER):

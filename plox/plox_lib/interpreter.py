@@ -163,6 +163,24 @@ class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
 
         return value
     
+    def visitSuperExpr(self, expr: expr.Super) -> object:
+
+        distance: int = self.locals[expr]
+        # Ignore type errors here, we ensure that "super" and "this" are always the correct type
+        # when interpreting and resolving the class. 
+        superclass: LoxClass = self.env.getAt("super", distance) # type: ignore
+        obj: LoxInstance = self.env.getAt("this", distance-1) # type: ignore
+
+        # Just for completeness, run some asserts here
+        assert isinstance(superclass, LoxClass) and isinstance(obj, LoxInstance)
+        
+        method: LoxFunction | None = superclass.find_method(expr.method.lexeme)
+
+        if method is None:
+            raise LoxRuntimeError(expr.method, f"Undefined property '{expr.method.lexeme}'.")
+
+        return method.bind(obj)
+    
     def visitThisExpr(self, expr: expr.This) -> object:
         return self.lookupVariable(expr.keyword, expr)
 
@@ -224,14 +242,31 @@ class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
         return
     
     def visitClassStmt(self, stmt: stmt.Class) -> None:
+
+        superclass: object = None
+        if stmt.superclass is not None:
+            superclass = self.evaluate(stmt.superclass)
+            if not isinstance(superclass, LoxClass):
+                raise LoxRuntimeError(stmt.superclass.name, "Superclass must be a class.")
+
         self.env.define(stmt.name.lexeme, None)
+
+        if stmt.superclass is not None:
+            self.env = Environment(self.env)
+            self.env.define("super", superclass)
 
         methods: dict[str, LoxFunction] = {}
         for method in stmt.methods:
             function: LoxFunction = LoxFunction(method, self.env, isInitializer=method.name.lexeme=="init")
             methods[method.name.lexeme] = function
 
-        newClass: LoxClass = LoxClass(stmt.name.lexeme, methods)
+        newClass: LoxClass = LoxClass(stmt.name.lexeme, superclass, methods)
+
+        if superclass is not None:
+            # We can ignore the type error here since we always have an enclosing environment in this situation
+            # self.env.enclosing is *never* None
+            self.env = self.env.enclosing  # type: ignore
+
         self.env.assign(stmt.name, newClass)
         return
     

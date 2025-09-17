@@ -81,6 +81,7 @@ if __name__ == "__main__":
         "Literal  - value: object",
         "Logical  - left: Expr, operator: Token, right: Expr",
         "Set      - object: Expr, name: Token, value: Expr",
+        "Super    - keyword: Token, method: Token",
         "This     - keyword: Token",
         "Unary    - operator: Token, right: Expr",
         "Variable - name: Token",
@@ -88,7 +89,7 @@ if __name__ == "__main__":
 
     generate_ast_file("Stmt", [
         "Block      - statements: list[Stmt]",
-        "Class      - name: Token, methods: list[\"Function\"]",
+        "Class      - name: Token, superclass: Variable | None, methods: list[\"Function\"]",
         "Expression - expression: Expr",
         "Function   - name: Token, params: list[Token], body: list[Stmt]",
         "If         - condition: Expr, thenBranch: Stmt, elseBranch: Stmt | None",
@@ -97,4 +98,4 @@ if __name__ == "__main__":
         "Var        - name: Token, initializer: Expr | None",
         "While      - condition: Expr, body: Stmt",
     ],
-    ["from .expr import Expr"])
+    ["from .expr import Expr, Variable"])

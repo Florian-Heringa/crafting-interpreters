@@ -54,4 +54,4 @@ KEYWORDS = {
 }
 
 FunctionType = Enum("FunctionType", "NONE, FUNCTION, METHOD, INITIALIZER")
-ClassType = Enum("ClassType", "NONE, CLASS")
+ClassType = Enum("ClassType", "NONE, CLASS, SUBCLASS")
