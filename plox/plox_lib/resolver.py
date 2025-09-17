@@ -134,6 +134,8 @@ class Resolver(stmt.Visitor[None], expr.Visitor[None]):
         if self.currentFunction == FunctionType.NONE:
             lox.Lox.error(stmt.keyword, "Can't return from top-level code.")
         if stmt.value is not None:
+            if self.currentFunction == FunctionType.INITIALIZER:
+                lox.Lox.error(stmt.keyword, "Can't return a value from an initializer.")
             self.resolveExpression(stmt.value)
         return
     
@@ -155,7 +157,7 @@ class Resolver(stmt.Visitor[None], expr.Visitor[None]):
         self.peekScope()["this"] = True
 
         for method in stmt.methods:
-            declaration: FunctionType = FunctionType.METHOD
+            declaration: FunctionType = FunctionType.INITIALIZER if method.name.lexeme == "init" else FunctionType.METHOD
             self.resolveFunction(method, declaration)
 
         self.endScope()

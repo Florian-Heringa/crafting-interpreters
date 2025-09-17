@@ -122,7 +122,10 @@ class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
             case TokenType.PLUS:
                 if isinstance(left, float) and isinstance(right, float):
                     return float(left) + float(right)
-                if isinstance(left, str) and isinstance(right, str):
+                elif isinstance(left, str) and isinstance(right, str):
+                    return str(left) + str(right)
+                # Allow mixed expressions and interpret as strings
+                elif isinstance(left, (float, int, str)) and isinstance(right, (float, int, str)):
                     return str(left) + str(right)
                 raise LoxRuntimeError(expr.operator, "Operands must be two numbers or two strings")
             
@@ -225,7 +228,7 @@ class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
 
         methods: dict[str, LoxFunction] = {}
         for method in stmt.methods:
-            function: LoxFunction = LoxFunction(method, self.env)
+            function: LoxFunction = LoxFunction(method, self.env, isInitializer=method.name.lexeme=="init")
             methods[method.name.lexeme] = function
 
         newClass: LoxClass = LoxClass(stmt.name.lexeme, methods)
@@ -295,7 +298,7 @@ class Interpreter(expr.Visitor[object], stmt.Visitor[None]):
         """Helper method for converting object values to strings"""
         if value is None:
             return "nil"
-        if isinstance(value, float):
+        if isinstance(value, (float, int)):
             return f"{value:g}"
         return str(value)
     

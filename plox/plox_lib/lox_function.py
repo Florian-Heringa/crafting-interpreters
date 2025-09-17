@@ -11,10 +11,14 @@ if TYPE_CHECKING:
     from .interpreter import Interpreter
 
 class LoxFunction(LoxCallable):
+    """
+    Class representing a Lox Function or Method.
+    """
 
-    def __init__(self, declaration: Function, closure: Environment):
+    def __init__(self, declaration: Function, closure: Environment, isInitializer: bool = False):
         self.closure: Environment = closure
         self.declaration: Function = declaration
+        self.isInitializer: bool = isInitializer
         
     def call(self, interpreter: "Interpreter", arguments: list[object]) -> object:
         """Execute the function body with the provided arguments. the 'visitCallExpr' method should do checking on correct parameter type and arity."""
@@ -29,14 +33,19 @@ class LoxFunction(LoxCallable):
         try:
             interpreter.executeBlock(self.declaration.body, environment)
         except control_flow.Return as r:
+            if self.isInitializer:
+                return self.closure.getAt("this", 0)
             return r.value
         
+        # Initializer methods automatically return a reference to the class instance
+        if self.isInitializer:
+            return self.closure.getAt("this", 0)
         return None
         
     def bind(self, instance: "lox_instance.LoxInstance") -> "LoxFunction":
         environment: Environment = Environment(self.closure)
         environment.define("this", instance)
-        return LoxFunction(self.declaration, environment)
+        return LoxFunction(self.declaration, environment, self.isInitializer)
     
     def arity(self) -> int:
         return len(self.declaration.params)

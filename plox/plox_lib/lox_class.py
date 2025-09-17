@@ -20,11 +20,21 @@ class LoxClass(LoxCallable):
         return self.__str__()
     
     def call(self, interpreter: "interpreter.Interpreter", arguments: list[object]) -> object:
+        """
+        When a class is called, create an instance and, if available, call the initializer with the provided arguments.
+        """
         instance: lox_instance.LoxInstance = lox_instance.LoxInstance(self)
+        initializer: "lox_function.LoxFunction | None" = self.find_method("init")
+        if initializer is not None:
+            # Call the init method with the provided arugments in the class call
+            initializer.bind(instance).call(interpreter, arguments)
         return instance
     
     def arity(self) -> int:
+        if init := self.find_method("init"):
+            return init.arity()
         return 0
+
     
     def find_method(self, name: str) -> "lox_function.LoxFunction | None":
         if name in self.methods:

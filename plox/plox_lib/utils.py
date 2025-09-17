@@ -53,5 +53,5 @@ KEYWORDS = {
     "while": TokenType.WHILE,
 }
 
-FunctionType = Enum("FunctionType", "NONE, FUNCTION, METHOD")
+FunctionType = Enum("FunctionType", "NONE, FUNCTION, METHOD, INITIALIZER")
 ClassType = Enum("ClassType", "NONE, CLASS")
