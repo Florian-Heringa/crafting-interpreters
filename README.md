@@ -4,9 +4,11 @@ This repository holds my work for the book Crafting Interpreters by Robert Nystr
 
 ### pLox
 
-A python implementation of Lox. For more info see [pLox README](./plox/README.md)
+A python implementation of Lox. For more info see [pLox README](./plox/README.md).
+Baisc implementation is working.
 
 
-### rLox
+### rLox (TODO)
 
-A Rust implementation of Lox. For more info see [rLox README](./rlox/README.md)
+A Rust implementation of Lox. For more info see [rLox README](./rlox/README.md).
+Coming soon.
